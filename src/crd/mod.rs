@@ -1,4 +1,4 @@
-// Copyright 2024 Stellar-K8s Contributors
+﻿// Copyright 2024 Stellar-K8s Contributors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -109,7 +109,7 @@ pub mod validator_score;
 pub mod stellar_registry;
 pub mod stellar_security;
 
-// Issue #1577 — Webhook Event Delivery for Ledger Close Notifications
+// Issue #1577 â€” Webhook Event Delivery for Ledger Close Notifications
 pub mod ledger_close_webhook;
 
 #[cfg(test)]
@@ -262,7 +262,7 @@ pub use stellar_security::{
     StellarSecurityPolicySpec, StellarSecurityPolicyStatus,
 };
 
-// Issue #1577 — Ledger-Close Webhook CRD exports
+// Issue #1577 â€” Ledger-Close Webhook CRD exports
 pub use ledger_close_webhook::{
     DeliveryLogEntry, DeliveryPhase, LedgerCloseEventType, LedgerClosePayload,
     LedgerCloseWebhook, LedgerCloseWebhookSpec, LedgerCloseWebhookStatus,
@@ -287,4 +287,5 @@ pub use validator_score::{
     ValidatorLeaderboard, ValidatorLeaderboardSpec, ValidatorLeaderboardStatus, ValidatorScore,
     ValidatorScoreSpec, ValidatorScoreStatus,
 };
+
 
