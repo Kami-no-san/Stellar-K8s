@@ -368,10 +368,7 @@ where
         .unwrap_or_else(|_| "http://localhost:4317".to_string());
     let service_name = service_name_from_env();
 
-    let resource = Resource::new(vec![
-        KeyValue::new("service.name", service_name.clone()),
-        KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
-    ]);
+    let resource = Resource::new(crate::observability_contract::otel_resource_kvs());
 
     // Configure OTLP exporter
     // Note: We use grpc as default but it can be changed to http/protobuf if needed
@@ -467,7 +464,7 @@ where
     let processor = CapturingProcessor {
         spans: spans.clone(),
     };
-    let resource = Resource::new(vec![KeyValue::new("service.name", "stellar-test")]);
+    let resource = Resource::new(crate::observability_contract::otel_resource_kvs());
     let provider = opentelemetry_sdk::trace::TracerProvider::builder()
         .with_config(
             Config::default()

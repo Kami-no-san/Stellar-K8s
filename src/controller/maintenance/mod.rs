@@ -18,10 +18,14 @@ pub mod bloat;
 pub mod controller;
 pub mod coordinator;
 pub mod node_drain;
+pub mod plan_controller;
+pub mod plan_engine;
 pub mod query_profiler;
 
 pub use bloat::BloatDetector;
 pub use controller::MaintenanceController;
 pub use coordinator::MaintenanceCoordinator;
 pub use node_drain::NodeDrainOrchestrator;
+pub use plan_controller::run_maintenance_plan_controller;
+pub use plan_engine::{reconcile_plan, SimulatedCluster};
 pub use query_profiler::{IndexSuggestion, QueryProfiler, SlowQuery};

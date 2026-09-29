@@ -107,8 +107,9 @@ securityContext:
     drop:
       - ALL
 
-# Enforce inter-service mTLS through Istio sidecars. Requires Istio with
-# automatic sidecar injection enabled in the cluster.
+# mTLS configuration for inter-service communication.
+# When enabled, creates self-signed CA and certificates for
+# Stellar Core, Horizon, and Soroban RPC services.
 mtls:
   enabled: false
 
@@ -725,6 +726,10 @@ otel:
   # Set to true to enable OTLP trace export from the operator.
   # When enabled, OTEL_EXPORTER_OTLP_ENDPOINT is injected into the operator pod.
   enabled: false
+  # Resource service.name used by the unified observability contract (#1481).
+  serviceName: stellar-operator
+  # Optional parent-based ratio injected as OTEL_TRACES_SAMPLER_ARG.
+  samplingRatio: ""
 
   # OTLP gRPC endpoint for the operator to send spans to.
   # Typically points to the in-cluster OTel Collector service.
@@ -944,15 +949,10 @@ webhook:
   # Admission review timeout in seconds. Kubernetes maximum is 30.
   timeoutSeconds: 10
 
-  # Deprecated: webhook failure is always Fail so TLS/trust verification errors
-  # cannot bypass admission policy.
+  # Action when the webhook is unreachable: Fail (safe default) or Ignore.
+  # Fail: admission is blocked if the webhook cannot be reached.
+  # Ignore: admission proceeds without the webhook response.
   failurePolicy: Fail
-
-  # Degradation mode for a webhook-layer outage (#1494): strict or permissive.
-  # permissive forces failurePolicy Ignore so an outage never blocks admission
-  # (including pod startup). Pair with `webhookMode: Permissive` on the
-  # ControlPlaneHealth resource so the operator corrects any drift.
-  mode: strict
 
   # Resource requests and limits for the webhook server container.
   resources:
@@ -963,27 +963,11 @@ webhook:
       cpu: 500m
       memory: 512Mi
 
-  # Declarative cert-manager lifecycle. Enabled by default whenever the
-  # admission webhook is enabled, providing issuance, CA distribution, and
-  # continuous renewal without generated or manually rotated files.
-  # Requires cert-manager.io/v1 and cainjector in the cluster.
+  # When true, render cert-manager Certificate + ClusterIssuer for webhook TLS.
+  # Default false so installs work without the cert-manager CRDs (e.g. kind
+  # quickstart). Enable in environments that have cert-manager installed.
   certManager:
-    enabled: true
-    # Serving certificate lifetime and renewal lead time. Renewal begins with
-    # one third of the lifetime remaining, leaving cainjector and pod reloads
-    # ample overlap before expiry.
-    duration: 2160h
-    renewBefore: 720h
-    caDuration: 8760h
-    caRenewBefore: 2160h
-    certHealth:
-      resources:
-        requests:
-          cpu: 10m
-          memory: 16Mi
-        limits:
-          cpu: 50m
-          memory: 64Mi
+    enabled: false
 
 # --- Helm lifecycle hooks ----------------------------------------------------
 hooks:
@@ -1020,178 +1004,3 @@ hooks:
 # Deploy with:
 #   helm install stellar-operator ./charts/stellar-operator -f values-ha.yaml
 # ============================================================================
-
-# =============================================================================
-# Epic #1477 — End-to-End Supply-Chain Provenance Attestation
-# =============================================================================
-# Controls the in-toto / SLSA provenance verification pipeline. When enabled,
-# the admission webhook rejects any image whose OCI Referrer Graph does not
-# carry a valid, verifiable provenance attestation at or above the configured
-# SLSA level.
-provenance:
-  # Master switch. Disable to allow unattested images during bootstrap.
-  enabled: true
-
-  # Minimum SLSA compliance level required for admission (L1 | L2 | L3).
-  minimumSlsaLevel: L2
-
-  # Restrict which OCI registries are considered trusted supply-chain sources.
-  # Wildcards are supported (e.g. "ghcr.io/otoworg/*").
-  trustedRegistries:
-    - "ghcr.io/otoworg/*"
-
-  # Action taken when provenance verification fails:
-  #   Deny  — reject the pod/image (production default)
-  #   Warn  — log a warning and emit a metric but allow (staging / break-glass)
-  #   Audit — allow but record in the tamper-evident audit chain
-  failurePolicy: Deny
-
-  # OIDC issuer accepted in keyless Cosign / Sigstore attestations.
-  oidcIssuer: "https://token.actions.githubusercontent.com"
-
-  # Expected builder identity for SLSA attestations (regex).
-  # Leave empty to skip builder identity enforcement.
-  expectedBuilder: ""
-
-  # Prometheus metrics for provenance pipeline events.
-  metrics:
-    enabled: true
-    additionalLabels: {}
-
-# =============================================================================
-# Epic #1479 — Immutable Audit Event Pipeline with Tamper-Evident Chain Hashing
-# =============================================================================
-# Configures the append-only, hash-chained audit log. Records every admission
-# decision, config change, quota override, and scaling action. Periodic Merkle
-# checkpoints prevent truncation attacks.
-auditChain:
-  # Master switch. Must be true for compliance deployments.
-  enabled: true
-
-  # Storage backend for audit records.
-  # Options: memory (dev only), configmap, postgres (requires auditChain.postgres.*)
-  backend: configmap
-
-  # Maximum number of records to keep in-memory per chain segment before flushing.
-  maxInMemoryRecords: 1000
-
-  # Checkpoint interval — how often to compute and persist a signed Merkle root.
-  checkpointInterval: "15m"
-
-  # HMAC signing key for Merkle checkpoints (reference a Kubernetes Secret).
-  signingKeySecretRef:
-    name: ""
-    key: ""
-
-  # PostgreSQL backend settings (only used when backend: postgres).
-  postgres:
-    host: ""
-    port: 5432
-    database: "stellar_audit"
-    sslMode: "require"
-    credentialsSecretRef:
-      name: ""
-      usernameKey: "username"
-      passwordKey: "password"
-
-  # Export audit records to an external SIEM via HTTP POST (JSON lines).
-  siemExport:
-    enabled: false
-    endpoint: ""
-    batchSize: 100
-    timeoutSeconds: 10
-
-  # Prometheus metrics for audit chain health.
-  metrics:
-    enabled: true
-    alertOnTamper: true
-
-# =============================================================================
-# Epic #1478 — Adaptive Horizontal Pod Autoscaling on Custom Business SLIs
-# =============================================================================
-# Configures the EWMA-based adaptive HPA controller that drives replica counts
-# from Stellar-specific business SLIs (ledger close latency, sync lag, TX queue
-# depth, Soroban invocation latency, fee-stat congestion, throughput TPS).
-adaptiveHpa:
-  # Master switch.
-  enabled: true
-
-  # Reconciliation interval (seconds).
-  reconcileIntervalSeconds: 30
-
-  # EWMA smoothing factor α ∈ (0, 1]. Lower = more inertia; higher = more reactive.
-  ewmaAlpha: 0.3
-
-  # Scale-down stabilisation window (seconds).
-  scaleDownStabilizationWindowSeconds: 300
-
-  # Maximum replicas the controller may ever set (hard ceiling).
-  maxReplicas: 50
-
-  # Minimum replicas (floor, prevents scale-to-zero).
-  minReplicas: 1
-
-  # Monthly cost cap enforced before any scale-up decision. 0 = disabled.
-  monthlyCostCapUsd: 0
-
-  # SLI targets — override per-SLI thresholds from code defaults.
-  sliTargets:
-    ledgerCloseLatencyMs: 5000
-    ledgerSyncLagLedgers: 1
-    horizonTxQueueDepth: 200
-    sorobanInvocationLatencyMs: 300
-    feeStatCongestionRatio: 0.85
-    transactionThroughputTpsPerReplica: 100.0
-
-  # Prometheus scrape endpoint used by the adaptive HPA controller.
-  prometheusEndpoint: "http://prometheus-operated:9090"
-
-  # Prometheus metrics for adaptive HPA events.
-  metrics:
-    enabled: true
-    additionalLabels: {}
-
-# =============================================================================
-# Epic #1480 — Declarative Multi-Tenant Quota & Fair-Share Scheduler Extension
-# =============================================================================
-# Configures Dominant Resource Fairness (DRF) scheduling and declarative
-# per-tenant resource quotas. The admission webhook enforces hard limits;
-# the scheduler extension orders pending pods by ascending weighted dominant share.
-fairShareScheduler:
-  # Master switch.
-  enabled: true
-
-  # Target Jain's Fairness Index (JFI). Alert when JFI drops below this.
-  targetJainFairnessIndex: 0.90
-
-  # How often the DRF share table is recomputed (seconds).
-  reconcileIntervalSeconds: 15
-
-  # Default tenant quota for tenants without an explicit TenantResourceQuota.
-  defaultQuota:
-    maxCpuCores: 8.0
-    maxMemoryGib: 32
-    maxValidators: 2
-    maxTotalPods: 10
-    guaranteedSharePercent: 10.0
-    weight: 1.0
-
-  # Tier-based weight presets (informational; actual weights set via CRD).
-  tierWeights:
-    free: 1.0
-    basic: 2.0
-    professional: 3.0
-    enterprise: 5.0
-
-  # Noisy-neighbour containment multiplier threshold.
-  noisyNeighbourThreshold: 1.5
-
-  # Admission behaviour when tenant quota is exhausted (Reject | Queue).
-  quotaExhaustedAction: Reject
-
-  # Prometheus metrics for fair-share scheduler events.
-  metrics:
-    enabled: true
-    jainFairnessIndexAlertThreshold: 0.85
-    additionalLabels: {}
-

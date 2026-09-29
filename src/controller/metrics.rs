@@ -250,9 +250,8 @@ pub static ASSET_SUPPLY_CHANGE_PERCENT: Lazy<Family<AssetLabels, Gauge<f64, Atom
     Lazy::new(Family::default);
 
 /// Number of large supply changes observed for a watched asset.
-pub static ASSET_LARGE_SUPPLY_CHANGES_TOTAL: Lazy<
-    Family<AssetLabels, Counter<u64, AtomicU64>>,
-> = Lazy::new(Family::default);
+pub static ASSET_LARGE_SUPPLY_CHANGES_TOTAL: Lazy<Family<AssetLabels, Counter<u64, AtomicU64>>> =
+    Lazy::new(Family::default);
 
 /// Number of clawback ledger changes observed for the watched asset.
 pub static ASSET_CLAWBACK_EVENTS_TOTAL: Lazy<Family<AssetLabels, Counter<u64, AtomicU64>>> =
@@ -937,6 +936,32 @@ pub static REGISTRY: Lazy<Registry> = Lazy::new(|| {
         "stellar_control_plane_suppressed_actions",
         "Operator actions withheld because of control-plane degradation",
         CONTROL_PLANE_SUPPRESSED_ACTIONS.clone(),
+    );
+
+    registry.register(
+        "stellar_cost_savings_usd",
+        "Realized cost savings versus on-demand (USD)",
+        COST_SAVINGS_USD.clone(),
+    );
+    registry.register(
+        "stellar_cost_savings_hourly_usd",
+        "Realized cost savings in the current UTC hour (USD)",
+        COST_SAVINGS_HOURLY_USD.clone(),
+    );
+    registry.register(
+        "stellar_spot_savings_usd",
+        "Spot-instance savings (alias of realized cost savings)",
+        SPOT_SAVINGS_USD.clone(),
+    );
+    registry.register(
+        "stellar_best_effort_spot_placement_ratio",
+        "Share of best-effort pods on spot capacity",
+        BEST_EFFORT_SPOT_PLACEMENT_RATIO.clone(),
+    );
+    registry.register(
+        "stellar_critical_on_spot_pods",
+        "Critical-tier pods currently scheduled onto spot (must be 0)",
+        CRITICAL_ON_SPOT_PODS.clone(),
     );
 
     registry
@@ -1864,6 +1889,23 @@ pub static OBSERVABILITY_PREDICTIVE_ALERTS_TOTAL: Lazy<Counter<u64, AtomicU64>> 
 pub static OBSERVABILITY_BASELINE_SAMPLES: Lazy<
     Family<ObservabilityBaselineLabels, Gauge<i64, AtomicI64>>,
 > = Lazy::new(Family::default);
+
+/// Realized placement savings versus on-demand (#1484).
+pub static COST_SAVINGS_USD: Lazy<Gauge<f64, AtomicU64>> = Lazy::new(Gauge::default);
+pub static COST_SAVINGS_HOURLY_USD: Lazy<Gauge<f64, AtomicU64>> = Lazy::new(Gauge::default);
+pub static SPOT_SAVINGS_USD: Lazy<Gauge<f64, AtomicU64>> = Lazy::new(Gauge::default);
+pub static BEST_EFFORT_SPOT_PLACEMENT_RATIO: Lazy<Gauge<f64, AtomicU64>> =
+    Lazy::new(Gauge::default);
+pub static CRITICAL_ON_SPOT_PODS: Lazy<Gauge<i64, AtomicI64>> = Lazy::new(Gauge::default);
+
+/// Publish live cost-aware placement metrics for the existing cost dashboard.
+pub fn set_placement_cost_metrics(hourly_usd: f64, spot_ratio: f64, critical_on_spot: u64) {
+    COST_SAVINGS_USD.set(hourly_usd);
+    COST_SAVINGS_HOURLY_USD.set(hourly_usd);
+    SPOT_SAVINGS_USD.set(hourly_usd);
+    BEST_EFFORT_SPOT_PLACEMENT_RATIO.set(spot_ratio);
+    CRITICAL_ON_SPOT_PODS.set(critical_on_spot as i64);
+}
 
 // ── Observability helper functions ────────────────────────────────────────
 

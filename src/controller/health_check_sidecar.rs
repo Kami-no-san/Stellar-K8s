@@ -188,9 +188,6 @@ async fn readiness_handler(State(state): State<HealthCheckState>) -> impl IntoRe
         );
     }
 
-    if sync_status.is_synced {
-        (
-            StatusCode::OK,
     let peer_report = state.peer_connectivity.read().await;
     let peers_unreachable = match peer_report.as_ref() {
         Some(report) => report.is_fully_degraded(),

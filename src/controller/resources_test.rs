@@ -467,6 +467,59 @@ peer-2 = "G..."
         }
     }
 
+    #[test]
+    fn test_critical_capacity_affinity_forbids_spot() {
+        let node = make_node(NodeType::Validator);
+        let affinity = merge_workload_affinity(&node).expect("affinity");
+        let na = affinity.node_affinity.expect("nodeAffinity");
+        let required = na
+            .required_during_scheduling_ignored_during_execution
+            .expect("required capacity filter");
+        let exprs: Vec<_> = required
+            .node_selector_terms
+            .iter()
+            .flat_map(|t| t.match_expressions.clone().unwrap_or_default())
+            .collect();
+        assert!(exprs.iter().any(|e| {
+            e.key == "node.kubernetes.io/lifecycle"
+                && e.operator == "NotIn"
+                && e.values
+                    .as_ref()
+                    .is_some_and(|v| v.iter().any(|x| x == "spot"))
+        }));
+    }
+
+    #[test]
+    fn test_best_effort_prefers_spot() {
+        let mut node = make_node(NodeType::SorobanRpc);
+        node.spec.placement.workload_tier = Some(crate::crd::WorkloadTier::BestEffort);
+        let affinity = merge_workload_affinity(&node).expect("affinity");
+        let na = affinity.node_affinity.expect("nodeAffinity");
+        let preferred = na
+            .preferred_during_scheduling_ignored_during_execution
+            .expect("preferred spot");
+        assert!(preferred.iter().any(|t| {
+            t.weight == 100
+                && t.preference
+                    .match_expressions
+                    .as_ref()
+                    .is_some_and(|exprs| {
+                        exprs.iter().any(|e| {
+                            e.key == "node.kubernetes.io/lifecycle"
+                                && e.operator == "In"
+                                && e.values
+                                    .as_ref()
+                                    .is_some_and(|v| v.contains(&"spot".into()))
+                        })
+                    })
+        }));
+        let labels = standard_labels(&node);
+        assert_eq!(
+            labels.get("stellar.org/workload-tier").map(String::as_str),
+            Some("best-effort")
+        );
+    }
+
     fn make_node(node_type: NodeType) -> StellarNode {
         use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
         StellarNode {
@@ -2096,4 +2149,315 @@ mod sidecar_peer_env {
             .map(|(_, v)| v)
             .expect("KNOWN_PEERS must be injected for validators")
     }
+}
+
+// -----------------------------------------------------------------------
+// Readiness Probe State Machine Coverage Tests (#1559)
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_readiness_probe_accepts_synced_state() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    
+    // Verify the probe is an exec probe
+    assert!(probe.exec.is_some(), "Validator readiness probe must be an exec probe");
+    
+    let exec_action = probe.exec.unwrap();
+    let command = exec_action.command.unwrap();
+    
+    // Verify the script structure
+    assert_eq!(command[0], "/bin/sh");
+    assert_eq!(command[1], "-c");
+    
+    let script = &command[2];
+    
+    // Verify the script checks for Synced! state
+    assert!(script.contains("Synced!"), "Script must check for Synced! state");
+    assert!(script.contains("exit 0"), "Script must exit 0 for ready states");
+}
+
+#[test]
+fn test_readiness_probe_accepts_tracking_state() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let exec_action = probe.exec.unwrap();
+    let script = &exec_action.command.unwrap()[2];
+    
+    // Verify the script checks for Tracking! state
+    assert!(script.contains("Tracking!"), "Script must check for Tracking! state");
+}
+
+#[test]
+fn test_readiness_probe_rejects_catching_up_state() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let exec_action = probe.exec.unwrap();
+    let script = &exec_action.command.unwrap()[2];
+    
+    // The script should use a case statement that only accepts Synced!/Tracking!
+    // All other states (including Catching up) will hit the *) exit 1 clause
+    assert!(script.contains("case"), "Script must use case statement for state matching");
+    assert!(script.contains("exit 1"), "Script must exit 1 for non-ready states");
+}
+
+#[test]
+fn test_readiness_probe_has_correct_timing() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    
+    // Verify probe timing configuration
+    assert_eq!(probe.initial_delay_seconds, Some(15));
+    assert_eq!(probe.period_seconds, Some(10));
+    assert_eq!(probe.timeout_seconds, Some(5));
+    assert_eq!(probe.failure_threshold, Some(3));
+    assert_eq!(probe.success_threshold, Some(1));
+}
+
+#[test]
+fn test_horizon_readiness_probe_uses_http() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::Horizon);
+    
+    // Horizon should use HTTP health check, not exec
+    assert!(probe.http_get.is_some(), "Horizon readiness probe must use HTTP GET");
+    assert!(probe.exec.is_none(), "Horizon readiness probe must not use exec");
+    
+    let http_get = probe.http_get.unwrap();
+    assert_eq!(http_get.path, Some("/health".to_string()));
+}
+
+#[test]
+fn test_soroban_readiness_probe_uses_http() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::SorobanRpc);
+    
+    // SorobanRpc should use HTTP health check, not exec
+    assert!(probe.http_get.is_some(), "SorobanRpc readiness probe must use HTTP GET");
+    assert!(probe.exec.is_none(), "SorobanRpc readiness probe must not use exec");
+    
+    let http_get = probe.http_get.unwrap();
+    assert_eq!(http_get.path, Some("/health".to_string()));
+}
+
+#[test]
+fn test_readiness_probe_queries_correct_port() {
+    use crate::crd::NodeType;
+    
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let script = &probe.exec.unwrap().command.unwrap()[2];
+    
+    // Verify the script queries the correct stellar-core HTTP API port
+    assert!(script.contains("localhost:11626"), "Script must query stellar-core HTTP API on port 11626");
+    assert!(script.contains("/info"), "Script must query the /info endpoint");
+}
+
+// -----------------------------------------------------------------------
+// Container Command Tests (#1558)
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_validator_has_explicit_command() {
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+    use crate::crd::types::{ResourceRequirements, ResourceSpec};
+    
+    let spec = StellarNodeSpec {
+        node_type: NodeType::Validator,
+        network: StellarNetwork::Testnet,
+        version: "v21.0.0".to_string(),
+        resources: ResourceRequirements {
+            requests: ResourceSpec {
+                cpu: "500m".to_string(),
+                memory: "1Gi".to_string(),
+            },
+            limits: ResourceSpec {
+                cpu: "2".to_string(),
+                memory: "4Gi".to_string(),
+            },
+        },
+        replicas: 1,
+        ..Default::default()
+    };
+    
+    let mut node = crate::crd::StellarNode::new("test-validator", spec);
+    node.metadata.namespace = Some("default".to_string());
+    
+    let sts = super::super::build_statefulset(&node, false);
+    let container = sts
+        .spec
+        .unwrap()
+        .template
+        .spec
+        .unwrap()
+        .containers
+        .into_iter()
+        .find(|c| c.name == "stellar-node")
+        .expect("stellar-node container must exist");
+    
+    // Verify explicit command is set
+    assert!(container.command.is_some(), "Validator container must have explicit command");
+    let command = container.command.unwrap();
+    assert_eq!(command[0], "/usr/bin/stellar-core");
+    assert_eq!(command[1], "run");
+    assert_eq!(command[2], "--conf");
+    assert_eq!(command[3], "/config/stellar-core.cfg");
+}
+
+#[test]
+fn test_horizon_has_explicit_command() {
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+    use crate::crd::types::{HorizonConfig, ResourceRequirements, ResourceSpec};
+    
+    let spec = StellarNodeSpec {
+        node_type: NodeType::Horizon,
+        network: StellarNetwork::Testnet,
+        version: "v21.0.0".to_string(),
+        resources: ResourceRequirements {
+            requests: ResourceSpec {
+                cpu: "500m".to_string(),
+                memory: "1Gi".to_string(),
+            },
+            limits: ResourceSpec {
+                cpu: "2".to_string(),
+                memory: "4Gi".to_string(),
+            },
+        },
+        replicas: 1,
+        horizon_config: Some(HorizonConfig {
+            database_secret_ref: "db".to_string(),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    
+    let mut node = crate::crd::StellarNode::new("test-horizon", spec);
+    node.metadata.namespace = Some("default".to_string());
+    
+    let dep = super::super::build_deployment(&node, false);
+    let container = dep
+        .spec
+        .unwrap()
+        .template
+        .spec
+        .unwrap()
+        .containers
+        .into_iter()
+        .find(|c| c.name == "stellar-node")
+        .expect("stellar-node container must exist");
+    
+    // Verify explicit command is set
+    assert!(container.command.is_some(), "Horizon container must have explicit command");
+    let command = container.command.unwrap();
+    assert_eq!(command[0], "/stellar-horizon");
+}
+
+#[test]
+fn test_soroban_has_explicit_command() {
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+    use crate::crd::types::{ResourceRequirements, ResourceSpec, SorobanConfig};
+    
+    let spec = StellarNodeSpec {
+        node_type: NodeType::SorobanRpc,
+        network: StellarNetwork::Testnet,
+        version: "v21.0.0".to_string(),
+        resources: ResourceRequirements {
+            requests: ResourceSpec {
+                cpu: "500m".to_string(),
+                memory: "1Gi".to_string(),
+            },
+            limits: ResourceSpec {
+                cpu: "2".to_string(),
+                memory: "4Gi".to_string(),
+            },
+        },
+        replicas: 1,
+        soroban_config: Some(SorobanConfig {
+            stellar_core_url: "http://core:11626".to_string(),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    
+    let mut node = crate::crd::StellarNode::new("test-soroban", spec);
+    node.metadata.namespace = Some("default".to_string());
+    
+    let dep = super::super::build_deployment(&node, false);
+    let container = dep
+        .spec
+        .unwrap()
+        .template
+        .spec
+        .unwrap()
+        .containers
+        .into_iter()
+        .find(|c| c.name == "stellar-node")
+        .expect("stellar-node container must exist");
+    
+    // Verify explicit command is set
+    assert!(container.command.is_some(), "SorobanRpc container must have explicit command");
+    let command = container.command.unwrap();
+    assert_eq!(command[0], "/stellar-rpc");
+}
+
+#[test]
+fn test_custom_command_override() {
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+    use crate::crd::types::{ResourceRequirements, ResourceSpec};
+    
+    let spec = StellarNodeSpec {
+        node_type: NodeType::Validator,
+        network: StellarNetwork::Testnet,
+        version: "v21.0.0".to_string(),
+        resources: ResourceRequirements {
+            requests: ResourceSpec {
+                cpu: "500m".to_string(),
+                memory: "1Gi".to_string(),
+            },
+            limits: ResourceSpec {
+                cpu: "2".to_string(),
+                memory: "4Gi".to_string(),
+            },
+        },
+        replicas: 1,
+        command: Some(vec![
+            "/custom/stellar-core".to_string(),
+            "--config".to_string(),
+            "/custom/config.cfg".to_string(),
+        ]),
+        args: Some(vec!["--verbose".to_string()]),
+        ..Default::default()
+    };
+    
+    let mut node = crate::crd::StellarNode::new("test-custom", spec);
+    node.metadata.namespace = Some("default".to_string());
+    
+    let sts = super::super::build_statefulset(&node, false);
+    let container = sts
+        .spec
+        .unwrap()
+        .template
+        .spec
+        .unwrap()
+        .containers
+        .into_iter()
+        .find(|c| c.name == "stellar-node")
+        .expect("stellar-node container must exist");
+    
+    // Verify custom command is used
+    assert!(container.command.is_some(), "Container must have command");
+    let command = container.command.unwrap();
+    assert_eq!(command[0], "/custom/stellar-core");
+    assert_eq!(command[1], "--config");
+    assert_eq!(command[2], "/custom/config.cfg");
+    
+    // Verify custom args are used
+    assert!(container.args.is_some(), "Container must have args");
+    let args = container.args.unwrap();
+    assert_eq!(args[0], "--verbose");
 }

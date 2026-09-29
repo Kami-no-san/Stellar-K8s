@@ -287,6 +287,12 @@ jobs:
       - name: Run semver gate unit tests
         run: python3 -m unittest scripts.tests.test_semver_gate
 
+      - name: Lint observability resource-attribute contract
+        run: python3 scripts/ci/lint-observability-contract.py
+
+      - name: Run observability contract lint unit tests
+        run: python3 -m unittest scripts.tests.test_lint_observability_contract
+
       - name: Check formatting
         if: needs.changes.outputs.rust_core == 'true'
         run: make fmt-check

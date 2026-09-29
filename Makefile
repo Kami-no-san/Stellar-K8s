@@ -35,6 +35,7 @@
 	health health-fast validate preflight test-shell all \
 	shell-safety test-shell-safety validate-yaml test-yaml-validation \
 	yaml-schema-validate test-db-migrations \
+	lint-observability-contract test-observability-contract \
 	helm-drift helm-drift-update test-helm-drift test-helm-bump \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
@@ -204,6 +205,16 @@ yaml-schema-validate: ## yamllint + CRD schema drift + Helm-render kubeconform (
 test-db-migrations: ## Forward/rollback SQL migration harness (#1317)
 	@echo "→ Running database migration tests..."
 	@bash scripts/ci/test-db-migrations.sh
+
+lint-observability-contract: ## Block resource attributes not in the published schema (#1481)
+	@echo "→ Linting observability resource-attribute contract..."
+	@python3 scripts/ci/lint-observability-contract.py
+
+test-observability-contract: ## Unit tests for the observability contract lint (#1481)
+	@echo "→ Testing observability contract lint..."
+	@python3 -m unittest scripts.tests.test_lint_observability_contract
+	@$(CARGO) test --lib observability_contract -- --nocapture
+	@$(CARGO) test --test observability_contract -- --nocapture
 
 helm-drift: ## Detect drift between Helm templates and the committed renders (#1045)
 	@bash scripts/check-helm-drift.sh

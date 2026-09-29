@@ -56,6 +56,22 @@ rules:
     resources: ["benchmarkreports/status"]
     verbs: ["get", "update", "patch"]
 
+  # MaintenancePlan CRD — planned drain / prewarm / SLO orchestrator
+  - apiGroups: ["stellar.org"]
+    resources: ["maintenanceplans"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["stellar.org"]
+    resources: ["maintenanceplans/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["stellar.org"]
+    resources: ["maintenanceplans/finalizers"]
+    verbs: ["update"]
+
+  # PDB-aware drain (read disruption budgets; never mutate them)
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+
   # Core resources managed by the operator
   - apiGroups: [""]
     resources: ["pods", "pods/log"]

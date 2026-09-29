@@ -49,6 +49,12 @@
       "apiVersion": "stellar.org/v1alpha1"
     },
     {
+      "file": "MaintenancePlan-stellar.org-v1alpha1.json",
+      "source": "config/crd/maintenanceplan-crd.yaml",
+      "kind": "MaintenancePlan",
+      "apiVersion": "stellar.org/v1alpha1"
+    },
+    {
       "file": "MultiSigOperation-stellar.org-v1alpha1.json",
       "source": "config/crd/multisigoperation-crd.yaml",
       "kind": "MultiSigOperation",
@@ -130,6 +136,12 @@
       "file": "StellarObservability-stellar.org-v1alpha1.json",
       "source": "config/crd/stellarobservability-crd.yaml",
       "kind": "StellarObservability",
+      "apiVersion": "stellar.org/v1alpha1"
+    },
+    {
+      "file": "StellarPolicyBundle-stellar.org-v1alpha1.json",
+      "source": "config/crd/stellarpolicybundle-crd.yaml",
+      "kind": "StellarPolicyBundle",
       "apiVersion": "stellar.org/v1alpha1"
     },
     {

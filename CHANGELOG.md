@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v3.3.0 (2026-09-28) [minor]
+
+• Merge pull request #1638 from Goodnessukaigwe/fix/1484-cost-aware-workload-placement-across-spot-and-on-demand-capacity
+• [1484] [EPIC] Cost-Aware Workload Placement Across Spot and On-Demand Capacity
+✨ feat(scheduler): cost-aware spot placement with preemptive migration
+• Prefer best-effort workloads onto spot capacity, keep critical workloads
+• on on-demand, migrate ahead of scheduled interruptions, and export
+• hourly realized savings through the existing cost dashboard.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+
+
 ## Chart v3.2.0 (2026-09-28) [minor]
 
 • Merge pull request #1601 from itsnotOJ/fix/1504-epic-multi-region-failover-orchestration-with-health-gated-traffic-shift

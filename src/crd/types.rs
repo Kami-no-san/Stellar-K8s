@@ -2048,6 +2048,67 @@ pub struct DRDrillResult {
     pub completed_at: Option<String>,
 }
 
+/// Workload scheduling tier used by cost-aware placement (#1484).
+///
+/// Critical workloads are never placed on spot capacity. Best-effort
+/// workloads preferentially land on spot when topology and affinity allow.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum WorkloadTier {
+    /// Consensus, public API, and other stateful production services.
+    Critical,
+    /// Interruptible / batch / indexer-class work that may use spot.
+    BestEffort,
+}
+
+impl WorkloadTier {
+    /// Parse a label or annotation value (`critical`, `best-effort`, `bestEffort`).
+    pub fn parse_label(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "critical" => Some(Self::Critical),
+            "best-effort" | "besteffort" | "best_effort" => Some(Self::BestEffort),
+            _ => None,
+        }
+    }
+
+    /// Canonical Kubernetes label value.
+    pub fn as_label(self) -> &'static str {
+        match self {
+            Self::Critical => "critical",
+            Self::BestEffort => "best-effort",
+        }
+    }
+}
+
+/// Node / node-group capacity class (#1484).
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum CapacityClass {
+    /// Interruptible / preemptible capacity.
+    Spot,
+    /// Guaranteed on-demand capacity.
+    OnDemand,
+}
+
+impl CapacityClass {
+    /// Parse a node label value (`spot`, `on-demand`, `ondemand`, `preemptible`).
+    pub fn parse_label(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "spot" | "preemptible" | "preempt" => Some(Self::Spot),
+            "on-demand" | "ondemand" | "on_demand" | "regular" => Some(Self::OnDemand),
+            _ => None,
+        }
+    }
+
+    /// Canonical Kubernetes label value.
+    pub fn as_label(self) -> &'static str {
+        match self {
+            Self::Spot => "spot",
+            Self::OnDemand => "on-demand",
+        }
+    }
+}
+
 /// Placement configuration for intelligent pod scheduling.
 /// Enables SCP-aware anti-affinity to ensure validator resilience.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq)]
@@ -2058,6 +2119,16 @@ pub struct PlacementConfig {
     /// placing nodes from the same quorum slice on the same physical host.
     #[serde(default)]
     pub scp_aware_anti_affinity: bool,
+
+    /// Explicit workload tier. When unset, inferred from `nodeType`
+    /// (Validator and Horizon default to critical).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workload_tier: Option<WorkloadTier>,
+
+    /// Preferred capacity class for best-effort workloads (defaults to spot).
+    /// Ignored for critical workloads, which always require on-demand.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preferred_capacity_class: Option<CapacityClass>,
 
     /// Jurisdictional compliance configuration.
     ///

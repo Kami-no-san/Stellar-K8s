@@ -671,3 +671,8 @@ This project is licensed under the [Apache 2.0 License](LICENSE).
 ## 📝 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and releases.
+
+## Handsoff notes
+
+<!-- handsoff-issue-1630 -->
+- #1630: [EPIC] Add bats Coverage for secret-rotation-check Script

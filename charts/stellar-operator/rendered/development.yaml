@@ -83,6 +83,40 @@ rules:
   - update
   - patch
 - apiGroups:
+  - stellar.org
+  resources:
+  - maintenanceplans
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - stellar.org
+  resources:
+  - maintenanceplans/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - stellar.org
+  resources:
+  - maintenanceplans/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - ''
   resources:
   - pods

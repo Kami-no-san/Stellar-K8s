@@ -86,6 +86,7 @@ pub mod stellar_observability;
 pub mod stellar_performance;
 pub mod stellar_topology;
 pub mod stellar_upgrade;
+pub mod maintenance_plan;
 pub mod tenant;
 pub mod traffic_policy;
 pub mod traffic_shift_plan;
@@ -101,6 +102,7 @@ pub mod stellar_aiops;
 pub mod stellar_database;
 pub mod stellar_disaster_recovery;
 pub mod stellar_gitops;
+pub mod stellar_policy_bundle;
 pub mod compliance_report;
 pub mod incident;
 pub mod multisig_operation;
@@ -205,6 +207,11 @@ pub use stellar_upgrade::{
     CanaryStrategy as UpgradeCanaryStrategy, HealthValidation, RollbackPolicy, StellarUpgrade,
     StellarUpgradeSpec, StellarUpgradeStatus, UpgradePhase,
 };
+pub use maintenance_plan::{
+    AbortPolicy, DrainConfig, MaintenanceIntent, MaintenancePhase, MaintenancePlan,
+    MaintenancePlanSpec, MaintenancePlanStatus, MaintenanceTarget, PdbConfig, PrewarmConfig,
+    SloVerification, StallRecovery,
+};
 pub use traffic_policy::{
     AdaptiveRateLimitPolicy, CircuitBreakerPolicy, LeakyBucketPolicy, PriorityRule, QosClassPolicy,
     TokenBucketPolicy, TrafficPolicy, TrafficPolicySpec, TrafficPolicyStatus, TrafficPriorityClass,
@@ -242,6 +249,10 @@ pub use stellar_disaster_recovery::{
 pub use stellar_gitops::{
     ArgoCDConfig, ArgoCDSyncPolicy, FluxCDConfig, GitOpsProvider, ProgressiveDeliveryConfig,
     StellarGitOpsConfig, StellarGitOpsConfigSpec, StellarGitOpsConfigStatus, SyncStatus,
+};
+pub use stellar_policy_bundle::{
+    CelPolicySpec, PolicyTrustRootRef, StellarPolicyBundle, StellarPolicyBundleSpec,
+    StellarPolicyBundleStatus,
 };
 pub use stellar_registry::{
     AdmissionPolicy, AutoPatchConfig, ComplianceReport as RegistryComplianceReport, GarbageCollectionConfig, MirrorStatus,

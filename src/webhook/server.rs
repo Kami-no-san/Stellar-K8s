@@ -39,6 +39,7 @@ use super::types::{
 };
 use crate::crd::{StellarNode, StellarNodeSpec};
 use crate::error::{Error, Result};
+use crate::policy_engine::{AdmissionView, PolicyEngine, TrustRoot};
 
 /// Webhook server state
 pub struct WebhookServer {
@@ -56,6 +57,9 @@ pub struct WebhookServer {
 
     /// HTTP client used for external policy delegation requests.
     policy_http: reqwest::Client,
+
+    /// Signed CEL policy-bundle engine (fail-closed when a bundle is active).
+    policy_engine: Arc<PolicyEngine>,
 }
 
 #[derive(Clone, Debug)]
@@ -187,7 +191,19 @@ impl WebhookServer {
                 fail_open,
             },
             policy_http,
+            policy_engine: Arc::new(PolicyEngine::new(TrustRoot::empty())),
         }
+    }
+
+    /// Replace the default policy engine (tests and key-management wiring).
+    pub fn with_policy_engine(mut self, engine: Arc<PolicyEngine>) -> Self {
+        self.policy_engine = engine;
+        self
+    }
+
+    /// Shared signed-policy engine used by `/validate` and `/validate/policy`.
+    pub fn policy_engine(&self) -> &PolicyEngine {
+        &self.policy_engine
     }
 
     async fn delegate_policy_check(&self, input: &ValidationInput) -> ValidationOutput {
@@ -338,6 +354,12 @@ impl WebhookServer {
                 if let Some(mut builtin) = validate_spec_builtin(object) {
                     builtin.warnings.extend(warnings);
                     return builtin;
+                }
+
+                if let Some(denied) =
+                    evaluate_signed_policy(&self.policy_engine, &input, &mut warnings)
+                {
+                    return denied;
                 }
 
                 let delegated = self.delegate_policy_check(&input).await;
@@ -754,6 +776,19 @@ async fn validate_policy_handler(
 
     let req: AdmissionRequest<StellarNode> = request;
     let input = build_validation_input(&req);
+    let mut warnings = Vec::new();
+    if let Some(denied) = evaluate_signed_policy(&state.policy_engine, &input, &mut warnings) {
+        let reason = denied
+            .message
+            .as_deref()
+            .unwrap_or("Denied by signed policy");
+        log_validation_rejection(&req, reason);
+        let mut response = AdmissionResponse::from(&req).deny(reason.to_string());
+        if !denied.warnings.is_empty() {
+            response.warnings = Some(denied.warnings);
+        }
+        return (StatusCode::OK, Json(response.into_review()));
+    }
     let delegated = state.delegate_policy_check(&input).await;
 
     if !delegated.allowed {
@@ -803,6 +838,13 @@ fn default_security_policy_library() -> Vec<SecurityPolicyInfo> {
             engine: "cel".to_string(),
             description: "Built-in CEL rules in the StellarNode CRD schema.".to_string(),
             path: "config/crd/stellarnode-crd.yaml".to_string(),
+        },
+        SecurityPolicyInfo {
+            name: "signed-policy-bundle".to_string(),
+            engine: "cel".to_string(),
+            description: "Ed25519-signed CEL policy bundles evaluated fail-closed at admission."
+                .to_string(),
+            path: "config/crd/stellarpolicybundle-crd.yaml".to_string(),
         },
     ]
 }
@@ -1129,6 +1171,46 @@ fn check_image_pinning(spec: &StellarNodeSpec) -> Vec<String> {
         }
     }
     warnings
+}
+
+fn admission_view_from_input(input: &ValidationInput) -> AdmissionView {
+    AdmissionView {
+        operation: format!("{:?}", input.operation).to_ascii_uppercase(),
+        namespace: input.namespace.clone(),
+        name: input.name.clone(),
+        object: input.object.clone(),
+        username: input.user_info.username.clone(),
+    }
+}
+
+fn evaluate_signed_policy(
+    engine: &PolicyEngine,
+    input: &ValidationInput,
+    warnings: &mut Vec<String>,
+) -> Option<ServerValidationResult> {
+    if !engine.is_enforced() {
+        return None;
+    }
+    match engine.admit(&admission_view_from_input(input)) {
+        Ok(decision) if decision.allowed => {
+            warnings.extend(decision.warnings);
+            None
+        }
+        Ok(decision) => Some(ServerValidationResult {
+            allowed: false,
+            message: decision.message,
+            warnings: warnings.clone(),
+            plugin_results: vec![],
+            total_execution_time_ms: decision.eval_duration.as_millis() as u64,
+        }),
+        Err(e) => Some(ServerValidationResult {
+            allowed: false,
+            message: Some(format!("Policy engine fail-closed: {e}")),
+            warnings: warnings.clone(),
+            plugin_results: vec![],
+            total_execution_time_ms: 0,
+        }),
+    }
 }
 
 /// Build ValidationInput from AdmissionRequest
