@@ -98,6 +98,12 @@ If your deployment name differs, replace `stellar-operator` with the actual depl
 
 ## Verify mTLS Provisioning
 
+Run the one-shot verification script via Make (skips gracefully when no cluster is available):
+
+```bash
+make verify-mtls
+```
+
 Check CA and server secrets:
 
 ```bash

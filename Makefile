@@ -19,7 +19,7 @@
 # =============================================================================
 
 .PHONY: help \
-	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-report \
+	fmt fmt-check lint lint-strict shellcheck audit verify-mtls security-scan security-all security-report \
 	build test chaos-test ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks health-check pre-commit pre-commit-install run run-local run-dev \
@@ -138,6 +138,9 @@ lint-strict: ## Run clippy (adds complexity checks on top of lint; same base exc
 
 audit: ## Security audit (cargo audit + deny) via consolidated lockfile gate
 	@bash scripts/dep-gate.sh
+
+verify-mtls: ## Verify mTLS inter-service encryption and rotation readiness (skips gracefully without a cluster)
+	@bash scripts/verify-mtls.sh
 
 security-scan: ## Run security scan (audit + dependency policy + shellcheck + shell safety)
 	@echo "→ Running comprehensive security scan..."
