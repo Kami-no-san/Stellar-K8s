@@ -79,6 +79,15 @@ pub struct StructuredLog {
     /// Request correlation ID across service boundaries
     #[serde(skip_serializing_if = "Option::is_none")]
     pub correlation_id: Option<String>,
+    /// Observability contract version (issue #1481)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stellar_observability_contract_version: Option<String>,
+    /// Canonical pod name for log-to-trace pivots
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub k8s_pod_name: Option<String>,
+    /// Service instance identity (pod UID)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_instance_id: Option<String>,
     /// Arbitrary additional context
     #[serde(flatten)]
     pub extras: HashMap<String, serde_json::Value>,
@@ -147,6 +156,7 @@ pub fn build_structured_log(event: &Event<'_>) -> StructuredLog {
     let metadata = event.metadata();
     let mut visitor = FullVisitor::default();
     event.record(&mut visitor);
+    let contract = crate::observability_contract::log_correlation_fields();
 
     StructuredLog {
         timestamp: Utc::now().to_rfc3339(),
@@ -169,7 +179,20 @@ pub fn build_structured_log(event: &Event<'_>) -> StructuredLog {
             .get("correlation_id")
             .or_else(|| visitor.extras.get("x_correlation_id"))
             .and_then(|v| v.as_str().map(|s| s.to_string())),
-        extras: visitor.extras,
+        stellar_observability_contract_version: Some(
+            crate::observability_contract::CONTRACT_VERSION.to_string(),
+        ),
+        k8s_pod_name: contract.get("k8s.pod.name").cloned(),
+        service_instance_id: contract.get("service.instance.id").cloned(),
+        extras: {
+            let mut extras = visitor.extras;
+            for (key, value) in contract {
+                extras
+                    .entry(key)
+                    .or_insert_with(|| serde_json::Value::String(value));
+            }
+            extras
+        },
     }
 }
 
@@ -258,6 +281,9 @@ mod tests {
             k8s_namespace: Some("default".to_string()),
             reconcile_id: Some("rec-123".to_string()),
             correlation_id: Some("corr-456".to_string()),
+            stellar_observability_contract_version: Some("1.0.0".to_string()),
+            k8s_pod_name: Some("stellar-operator-0".to_string()),
+            service_instance_id: Some("uid-1".to_string()),
             extras,
         };
 
@@ -292,6 +318,9 @@ mod tests {
             k8s_namespace: None,
             reconcile_id: None,
             correlation_id: None,
+            stellar_observability_contract_version: None,
+            k8s_pod_name: None,
+            service_instance_id: None,
             extras,
         };
 

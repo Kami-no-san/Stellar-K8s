@@ -1491,6 +1491,33 @@ spec:
                           Core starts.'
                         nullable: true
                         type: string
+                      sha256:
+                        description: Expected SHA-256 hex digest of the downloaded archive. Restore fails before extraction if it does not match.
+                        nullable: true
+                        pattern: ^[a-fA-F0-9]{64}$
+                        type: string
+                      expectedLedgerSequence:
+                        description: Source ledger sequence checked against the snapshot manifest after extraction.
+                        format: int64
+                        minimum: 0.0
+                        nullable: true
+                        type: integer
+                      expectedNetwork:
+                        description: Source network checked against the snapshot manifest after extraction.
+                        nullable: true
+                        type: string
+                      export:
+                        description: S3 export destination on the source node. Export is triggered by annotation while the node is suspended.
+                        nullable: true
+                        properties:
+                          credentialsSecretRef:
+                            type: string
+                          destination:
+                            type: string
+                        required:
+                        - credentialsSecretRef
+                        - destination
+                        type: object
                       credentialsSecretRef:
                         description: 'Name of a Kubernetes Secret containing credentials
                           for the backup URL. For S3: keys AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,

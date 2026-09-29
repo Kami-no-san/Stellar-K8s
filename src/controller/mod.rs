@@ -13,6 +13,7 @@ pub mod gitops_upgrade;
 pub mod horizon_cache;
 pub mod horizon_metrics_collector;
 pub mod horizon_scaler;
+pub mod job_orphan_reconciler;
 pub mod jurisdiction;
 pub mod label_propagation;
 pub mod leader;
@@ -27,6 +28,7 @@ pub mod pdb;
 pub mod pss;
 pub mod quota;
 pub mod registry_controller;
+pub mod registry_gate;
 pub mod resource_meta;
 
 
@@ -44,6 +46,7 @@ pub mod captive_core;
 pub mod chaos_engineering;
 pub mod compliance_export;
 pub mod conditions;
+pub mod config_scope;
 pub mod cost;
 pub mod cross_cluster;
 pub mod cross_region_sync;
@@ -69,18 +72,30 @@ mod health_test;
 pub mod ingestion;
 pub mod kms_secret;
 [cfg(feature = "metrics")]
+pub mod lifecycle_hooks;
+#[cfg(feature = "metrics")]
 pub mod metrics;
+#[cfg(feature = "metrics")]
+pub mod asset_monitor;
 pub mod mtls;
 pub mod mtls_rotation;
 pub mod oci_snapshot;
+pub mod ledger_migration;
 pub mod operator_config;
+pub mod ownership_registry;
+pub mod peer_connectivity;
 pub mod peer_discovery;
 [cfg(test)]
 mod peer_discovery_test;
+pub mod performance;
+pub mod phases;
+pub mod policy_bundle;
+pub mod preemptive_spot_migration;
 pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
+pub mod testnet_compliance;
 pub(crate) mod reconciler;
 [cfg(test)]
 mod reconciler_test;
@@ -106,16 +121,39 @@ pub(crate) mod sync_state_monitor;
 pub mod topology;
 pub mod traffic;
 [cfg(test)]
+pub mod traffic_shift;
+#[cfg(test)]
+mod traffic_shift_test;
+#[cfg(test)]
 mod traffic_test;
 pub mod vpa;
 pub(crate) mod vsl;
 pub mod webhook_delivery;
 pub mod zk_archive_verifier;
 
+// Issue #1577 — Ledger-Close Webhook Dispatcher
+pub mod ledger_close_dispatcher;
+// Issue #1564 — Horizon Ingestion Failover for Validator Groups
+pub mod horizon_failover;
+// Issue #1565 — Soroban RPC Caching and Pagination Limits
+pub mod soroban_rpc;
+
 pub use anomaly_detection::{run_anomaly_detection, AnomalyDetector, AnomalyEvent};
 pub use archive_health::{
-    calculate_backoff, check_archive_integrity, check_history_archive_health, ArchiveHealthResult,
-    ArchiveIntegrityResult, ARCHIVE_LAG_THRESHOLD,
+    calculate_backoff, check_archive_integrity, check_archives_version_compatibility,
+    check_history_archive_health, check_single_archive_version_compatibility,
+    supported_archive_versions, validate_archive_compatibility,
+    ArchiveHealthResult, ArchiveIntegrityResult, ArchiveVersionCompatibility,
+    StellarHistoryJson, ARCHIVE_LAG_THRESHOLD,
+};
+pub use horizon_failover::{
+    HorizonHealthStatus, HorizonIngestionCoordinator, HorizonIngestionRole,
+    DEFAULT_INGESTION_LEASE_DURATION_SECS,
+};
+pub use soroban_rpc::{
+    EventCursor, EventFilter, GetEventsRequest, GetEventsResponse, GetLedgerEntriesRequest,
+    GetLedgerEntriesResponse, LedgerEntryLruCache, LedgerEntryResult, SorobanEvent,
+    SorobanRpcHandler, DEFAULT_CACHE_SIZE_MB, DEFAULT_MAX_PAGE_SIZE,
 };
 pub use audit_log::{AdminAction, AuditEntry, AuditLog};
 pub use audit_recorder::AuditRecorder;
@@ -160,6 +198,11 @@ pub use gitops_upgrade::{
     ProtocolUpgradeTimeline,
 };
 pub use health::{check_node_health, HealthCheckResult};
+pub use job_orphan_reconciler::{
+    classify_job, classify_pod, plan_reclaim, reconcile_job_retention, ArtifactId, ArtifactKind,
+    Classification, ClusterView, JobObservation, JobPhase, OrphanClass, OwnerRefSnapshot,
+    PodObservation, PodPhase, ReclaimAction, ReclaimOutcome, ReclaimPlan, ReclaimTarget,
+};
 pub use jurisdiction::{
     build_jurisdiction_node_affinity, compliance_report, merge_jurisdiction_tolerations,
     ComplianceReportEntry,
@@ -177,6 +220,7 @@ pub use peer_discovery::{
     get_peers_from_config_map, trigger_peer_config_reload, PeerDiscoveryConfig,
     PeerDiscoveryManager, PeerInfo,
 };
+pub use policy_bundle::reconcile_policy_bundle;
 pub use pruning_reconciler::{reconcile_pruning, update_pruning_status};
 pub use pss::{
     ensure_namespace_pss_labels, restricted_container_security_context,
@@ -204,3 +248,18 @@ pub use topology::{
     ClusterTopology, EnforcementResult, TopologyMode, TopologyRuleSet, TopologySpreadConstraint,
     WhenUnsatisfiable,
 };
+pub mod cross_signal_anomaly;
+pub mod health_check_sidecar;
+pub mod index_sharding;
+pub mod ml_pipeline;
+pub mod observability_dashboard;
+pub mod observability_pipeline;
+pub mod orphan_audit;
+pub mod pvc_autoscaler;
+pub mod resource_optimization;
+
+// Issue #1577 — Ledger-Close Webhook Dispatcher exports
+pub use ledger_close_dispatcher::{
+    run_ledger_close_poll_loop, LedgerCloseDispatcher,
+};
+pub use orphan_audit::{OrphanAuditReport, OrphanAuditor, OrphanedResource};

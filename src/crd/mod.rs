@@ -61,10 +61,15 @@
 
 #[cfg(test)]
 mod blue_green_schema_test;
+pub mod capacity_forecast;
 mod cnpg;
+pub mod control_plane_health;
 pub mod dr_policy;
 pub mod federation;
+pub mod internal_api_schema;
+pub mod job_retention;
 pub mod multi_region;
+pub mod progressive_delivery;
 pub mod read_replica;
 pub mod schema_utils;
 pub mod secret_policy;
@@ -75,12 +80,15 @@ pub mod stellar_benchmark;
 pub mod stellar_federation;
 pub mod stellar_network_policy;
 mod stellar_node;
+pub mod stellar_asset_monitor;
 pub mod stellar_observability;
 pub mod stellar_performance;
 pub mod stellar_topology;
 pub mod stellar_upgrade;
+pub mod maintenance_plan;
 pub mod tenant;
 pub mod traffic_policy;
+pub mod traffic_shift_plan;
 pub mod types;
 pub use tenant::{
     TenantBillingSpec, TenantCondition, TenantNetworkIsolation, TenantQuotaHard, TenantSpec,
@@ -88,17 +96,37 @@ pub use tenant::{
 };
 
 // New Epic CRDs (Wave 5)
+pub mod service_ownership;
 pub mod stellar_aiops;
 pub mod stellar_database;
 pub mod stellar_disaster_recovery;
 pub mod stellar_gitops;
+pub mod stellar_policy_bundle;
+pub mod compliance_report;
+pub mod incident;
+pub mod multisig_operation;
+pub mod validator_score;
 pub mod stellar_registry;
 pub mod stellar_security;
+
+// Issue #1577 — Webhook Event Delivery for Ledger Close Notifications
+pub mod ledger_close_webhook;
 
 #[cfg(test)]
 mod tests;
 
+pub use capacity_forecast::{
+    BacktestReport, CapacityDimension, CapacityForecastSummary, CapacityRecommendationReport,
+    CapacityRecommendationReportSpec, CapacityRecommendationReportStatus, ForecastInterval,
+    ForecastModelKind, IncidentBacktest, RecommendationPhase, RecommendationPriority,
+    ScalingRecommendation, SeriesBacktest, TimeToExhaustion,
+};
 pub use cnpg::*;
+pub use control_plane_health::{
+    ComponentState, ComponentStatus, ControlPlaneComponent, ControlPlaneHealth,
+    ControlPlaneHealthSpec, ControlPlaneHealthStatus, DegradationLevel, IncidentReport,
+    LevelTransition, PermittedActions, WebhookMode,
+};
 pub use dr_policy::{
     ComplianceStatus, DisasterRecoveryPolicy, DisasterRecoveryPolicySpec,
     DisasterRecoveryPolicyStatus,
@@ -106,6 +134,13 @@ pub use dr_policy::{
 pub use federation::{
     ClusterRegistry, ClusterRegistrySpec, ConflictResolutionStrategy, FederatedCluster,
     FederatedPlacement, FederatedStellarNode, FederatedStellarNodeSpec,
+};
+pub use internal_api_schema::{
+    ConsumerDeploymentPolicy, InternalApiSchema, InternalApiSchemaSpec, InternalApiSchemaStatus,
+    SchemaDeploymentPhase,
+};
+pub use job_retention::{
+    JobRetentionPolicy, JobRetentionPolicySpec, JobRetentionPolicyStatus, ReclaimedByClass,
 };
 pub use multi_region::{
     ClusterConfig, ClusterHealthStatus, FailoverPolicy, MultiRegionConfig, MultiRegionHealthCheck,
@@ -148,6 +183,9 @@ pub use stellar_node::{
     BGPStatus, SnapshotBootstrapStatus, SpecValidationError, StellarNode, StellarNodeSpec,
     StellarNodeStatus,
 };
+pub use stellar_asset_monitor::{
+    AssetWatch, StellarAssetMonitor, StellarAssetMonitorSpec,
+};
 pub use stellar_observability::{
     AlertRule, AlertingConfig, AnomalyDetectionConfig, AnomalyModel, AnomalySensitivity,
     LoggingBackend, LoggingConfig, StellarObservability, StellarObservabilitySpec,
@@ -164,9 +202,24 @@ pub use stellar_upgrade::{
     CanaryStrategy as UpgradeCanaryStrategy, HealthValidation, RollbackPolicy, StellarUpgrade,
     StellarUpgradeSpec, StellarUpgradeStatus, UpgradePhase,
 };
+pub use maintenance_plan::{
+    AbortPolicy, DrainConfig, MaintenanceIntent, MaintenancePhase, MaintenancePlan,
+    MaintenancePlanSpec, MaintenancePlanStatus, MaintenanceTarget, PdbConfig, PrewarmConfig,
+    SloVerification, StallRecovery,
+};
 pub use traffic_policy::{
     AdaptiveRateLimitPolicy, CircuitBreakerPolicy, LeakyBucketPolicy, PriorityRule, QosClassPolicy,
     TokenBucketPolicy, TrafficPolicy, TrafficPolicySpec, TrafficPolicyStatus, TrafficPriorityClass,
+};
+pub use progressive_delivery::{
+    GateResult, ProgressiveDelivery, ProgressiveDeliverySpec, ProgressiveDeliveryStatus,
+    PromotionPhase, SloGate, TrafficSplit, WeightProgression,
+};
+pub use traffic_shift_plan::{
+    AppliedGate, FailbackPolicy, FailoverTargets, FailoverTrigger, GateDecision, HealthGateSpec,
+    RegionHealthEvidence, RegionTarget, RoutingRecordSpec, RpoEvidence, RtoMeasurement,
+    ShiftDirection, ShiftPolicy, ShiftStepStatus, StepOutcome, TrafficShiftPhase, TrafficShiftPlan,
+    TrafficShiftPlanSpec, TrafficShiftPlanStatus, TrafficWeights,
 };
 pub use types::*;
 
@@ -192,8 +245,12 @@ pub use stellar_gitops::{
     ArgoCDConfig, ArgoCDSyncPolicy, FluxCDConfig, GitOpsProvider, ProgressiveDeliveryConfig,
     StellarGitOpsConfig, StellarGitOpsConfigSpec, StellarGitOpsConfigStatus, SyncStatus,
 };
+pub use stellar_policy_bundle::{
+    CelPolicySpec, PolicyTrustRootRef, StellarPolicyBundle, StellarPolicyBundleSpec,
+    StellarPolicyBundleStatus,
+};
 pub use stellar_registry::{
-    AdmissionPolicy, AutoPatchConfig, ComplianceReport, GarbageCollectionConfig, MirrorStatus,
+    AdmissionPolicy, AutoPatchConfig, ComplianceReport as RegistryComplianceReport, GarbageCollectionConfig, MirrorStatus,
     RegistryMirror, RegistryPhase, RegistryProxyConfig, ScannerBackend, ScanningConfig,
     SigningConfig, StellarRegistry, StellarRegistrySpec, StellarRegistryStatus,
     VulnerabilitySummary,
@@ -204,3 +261,30 @@ pub use stellar_security::{
     SecretManagementConfig, SecretProvider, SecurityMonitoringConfig, StellarSecurityPolicy,
     StellarSecurityPolicySpec, StellarSecurityPolicyStatus,
 };
+
+// Issue #1577 — Ledger-Close Webhook CRD exports
+pub use ledger_close_webhook::{
+    DeliveryLogEntry, DeliveryPhase, LedgerCloseEventType, LedgerClosePayload,
+    LedgerCloseWebhook, LedgerCloseWebhookSpec, LedgerCloseWebhookStatus,
+};
+pub use compliance_report::{
+    ComplianceCondition, ComplianceReport, ComplianceReportFormat, ComplianceReportPhase,
+    ComplianceReportSpec, ComplianceReportStatus, GeneratedArtifactRef, HsmKmsVerificationSpec,
+    KeyCustodyAttestation, ReportDestinationConfig, TxProcessingEvidence, ValidatorUptimeEvidence,
+};
+pub use incident::{
+    AlertChannelConfig, AlertChannelType, AlertDispatchResult, Incident, IncidentPhase,
+    IncidentSeverity as NetworkIncidentSeverity, IncidentSpec, IncidentStatus as NetworkIncidentStatus,
+    IncidentTimelineEntry, IncidentType, PartitionDetails, QuorumAdjustmentRecommendation,
+};
+pub use multisig_operation::{
+    AdminOperationType, CollectedSignature, MultiSigAuditEntry, MultiSigCondition,
+    MultiSigOperation, MultiSigOperationSpec, MultiSigOperationStatus, MultiSigPhase,
+    SignerEndpointSpec, SubmissionResult,
+};
+pub use validator_score::{
+    ComponentScore, HourlyScoreSample, LeaderboardEntry, PerformanceGrade, ScoringWeights,
+    ValidatorLeaderboard, ValidatorLeaderboardSpec, ValidatorLeaderboardStatus, ValidatorScore,
+    ValidatorScoreSpec, ValidatorScoreStatus,
+};
+

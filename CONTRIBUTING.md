@@ -186,11 +186,58 @@ Always drive the local pipeline through `make` targets so results match CI:
 
 ```bash
 make health        # Contributor health gate
-make ci-local      # Full CI pipeline locally
+make ci-local      # Full CI pipeline (fmt-check + lint + docs-lint + audit + test + build + link-check)
 ```
 
 See the [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md)
 for the full command set and per-step expectations.
+
+### Script tests — bats harness
+
+Shell scripts under `scripts/` are covered by a [bats](https://github.com/bats-core/bats-core)
+test harness in `scripts/tests/`. CI runs these suites on every PR that touches
+`scripts/`, so add or extend a suite whenever you change a script.
+
+**Prerequisites** — install bats (and its helper libraries) locally:
+
+```bash
+# macOS
+brew install bats-core
+
+# Debian/Ubuntu
+sudo apt-get install -y bats
+
+# Any platform via npm
+npm install -g bats
+```
+
+**Run the suites** — the same invocation CI uses:
+
+```bash
+bats scripts/tests/
+```
+
+To run a single suite while iterating:
+
+```bash
+bats scripts/tests/preflight.bats
+```
+
+**Adding a new suite** — create `scripts/tests/<script-name>.bats` next to the
+script it exercises, then:
+
+1. Start the file with `#!/usr/bin/env bats` and load shared helpers with
+   `load 'test_helper'` if the suite needs common fixtures.
+2. Add one `@test "<description>"` block per behavior you want to lock in.
+3. Use `run <command>` and assert on `$status` / `$output` so failures are
+   reported per test case.
+4. Keep each suite self-contained: create any temp files under `$BATS_TEST_TMPDIR`
+   and clean up after the test.
+5. Verify locally with `bats scripts/tests/<script-name>.bats` before pushing.
+
+**Reference suite** — [`scripts/tests/preflight.bats`](scripts/tests/preflight.bats)
+is the canonical example: it shows the expected file layout, helper loading, and
+assertion style to follow when adding new suites.
 
 ## 8. Coding Standards
 
@@ -228,64 +275,6 @@ for the full command set and per-step expectations.
 
 - CRD YAML files follow the `stellar{feature}-crd.yaml` naming pattern under `config/crd/`.
 - Example manifests in `examples/` use descriptive, feature-based names — not issue numbers.
-- Generated manifests (CRDs, API reference, bundle) must be regenerated from their source before merging. See the [Regenerating Manifests](DEVELOPMENT.md#regenerating-manifests) table in DEVELOPMENT.md.
+- Generated manifests (CRDs, API reference, bundle) must be regenerated from their source before merg
 
-## 9. Repo Health Checklist
-
-Before marking a PR ready for review, run `make health` (or `make ci-local`
-for the full audit + link-check gate) and complete every item in the
-[Canonical Repository Health Checklist](docs/development/repo-health-checklist.md).
-That document is the single source of truth — do not duplicate command blocks here.
-Run through this before marking a PR ready for review:
-
-- [ ] `make health` passes (format + lint + test + docs) — or `make ci-local` for the full audit + link-check gate
-- [ ] `make health-fast` passes for a quick pre-push compile check
-- [ ] No new `#[allow(dead_code)]` without an explanatory comment
-- [ ] No unused imports in modified files
-- [ ] Generated manifests are up to date with their source
-- [ ] Shell scripts pass `shellcheck -S error`
-- [ ] New doc files are added to `mkdocs.yml`
-- [ ] Commit messages follow Conventional Commits and include a `Signed-off-by` line
-Before requesting a review for a Pull Request, please ensure all checks listed in the [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md) have been run and verified.
-
-## 10. Need Help?
-
-If you're stuck, open a Draft PR or create an issue to ask for guidance.
-
-Refer to [README.md](README.md) and [DEVELOPMENT.md](DEVELOPMENT.md) for additional project setup and workflow information.
-
-## Troubleshooting
-
-### Setup Issues
-- **Problem**: `make` or `cargo` commands not found.
-  - **Solution**: Ensure you have installed the necessary dependencies from `DEVELOPMENT.md`.
-- **Problem**: Minikube / Kind cluster fails to start.
-  - **Solution**: Check your Docker daemon is running and has enough resources allocated (minimum 4GB RAM, 2 CPUs).
-
-### Build Failures
-- **Problem**: Code fails to compile due to missing dependencies.
-  - **Solution**: Run `cargo fetch` or `cargo update` to ensure you have the latest crates. Also, ensure your system has `cmake`, `libssl-dev`, and `pkg-config` installed.
-- **Problem**: Tests fail locally but pass on CI.
-  - **Solution**: Run `make clean` and then rebuild. Sometimes local artifacts can get stale.
-
-### Cargo Issues
-- **Problem**: Cargo build is extremely slow.
-  - **Solution**: We highly recommend using `sccache` to cache intermediate build results. Follow the instructions in `DEVELOPMENT.md` to set it up.
-
-### Docker Issues
-- **Problem**: Docker build fails with out of space errors.
-  - **Solution**: Run `docker system prune` to free up space. The build requires at least 10GB of free space due to the multi-stage cargo caching.
-- **Problem**: `make quick` fails during docker validation.
-  - **Solution**: Make sure you have the latest base images pulled locally.
-
-### Kubernetes Issues
-- **Problem**: Operator pod is crashlooping.
-  - **Solution**: Check the operator logs using `kubectl logs -n stellar-system -l app.kubernetes.io/name=stellar-operator`. Often, this is due to invalid RBAC permissions or missing secrets.
-- **Problem**: Custom Resource Definitions (CRDs) not applying.
-  - **Solution**: Ensure your KUBECONFIG points to the correct cluster. Run `make install` to manually install the CRDs into your cluster.
-
-### CI Failures
-- **Problem**: GitHub Actions workflow fails on linting.
-  - **Solution**: Run `make fmt` and `make lint` locally before pushing. Also, check `.pre-commit-config.yaml` to ensure your pre-commit hooks are installed.
-- **Problem**: Link validation CI fails.
-  - **Solution**: Run `make link-check` for markdown link/anchor issues, or `make link-check-all` for the full repo-wide check (markdown + source + configs).
+/* … truncated 3674 chars — edit only what you need near the top … */

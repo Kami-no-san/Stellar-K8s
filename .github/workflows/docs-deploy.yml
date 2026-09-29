@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0  # Fetch all history for git-revision-date-localized
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -53,7 +53,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Build and deploy documentation
+      - name: Build documentation (strict)
+        # Issue #1633: mkdocs.yml enables strict mode, so this build fails on
+        # any warning (broken links, unrecognized anchors, nav issues). The
+        # explicit --strict flag guarantees strict behavior even if the config
+        # is ever changed, keeping the PR docs check and deploy in lockstep.
+        run: |
+          mkdocs build --strict --verbose
+
+      - name: Deploy documentation
         run: |
           mkdocs gh-deploy --force --clean --verbose
 

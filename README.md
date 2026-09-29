@@ -12,8 +12,8 @@
   <a href="https://codecov.io/gh/OtowoOrg/Stellar-K8s">
     <img src="https://img.shields.io/codecov/c/github/OtowoOrg/Stellar-K8s/main?style=for-the-badge&logo=codecov" alt="Coverage" />
   </a>
-  <a href="https://github.com/OtowoOrg/Stellar-K8s/actions/workflows/security-scan.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/OtowoOrg/Stellar-K8s/security-scan.yml?branch=main&style=for-the-badge&label=Security&logo=trivy" alt="Security Scan" />
+  <a href="https://github.com/OtowoOrg/Stellar-K8s/actions/workflows/container-image-security.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/OtowoOrg/Stellar-K8s/container-image-security.yml?branch=main&style=for-the-badge&label=Security&logo=trivy" alt="Security Scan" />
   </a>
 </p>
 
@@ -90,7 +90,7 @@ Stellar-K8s follows the **Operator Pattern**, extending Kubernetes with a `Stell
 - **Rust 1.92+** (minimum enforced by CI's `preflight`/`lint` jobs and
   `scripts/lib/versions.sh` — run `make dev-setup` or
   `cargo run --bin stellar-bootstrap-verify` to check your local version)
-  - Docker builds (`Dockerfile`, `Dockerfile.dev`) currently use Rust 1.95
+  - Docker builds (`Dockerfile`, `Dockerfile.dev`) currently use Rust 1.98
 
 > **New to Stellar-K8s?** See the [Glossary](docs/glossary.md) for definitions of common terms like [Validator](docs/glossary.md#validator), [Horizon](docs/glossary.md#horizon), [SCP](docs/glossary.md#scp-stellar-consensus-protocol), and [Reconciliation](docs/glossary.md#reconciliation).
 >
@@ -704,3 +704,8 @@ This project is licensed under the [Apache 2.0 License](LICENSE).
 ## 📝 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and releases.
+
+## Handsoff notes
+
+<!-- handsoff-issue-1630 -->
+- #1630: [EPIC] Add bats Coverage for secret-rotation-check Script

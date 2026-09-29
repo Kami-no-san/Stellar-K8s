@@ -93,23 +93,52 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 static MALLOC_CONF: &[u8] = b"prof:true,prof_active:false,lg_prof_sample:19\0";
 
 pub mod api_gateway;
+// pub mod approval;
+// pub mod cardinality;
+// pub mod latency;
+// pub mod namespace_security;
+pub mod adaptive_hpa;
+pub mod audit_chain;
 pub mod backup;
+pub mod benchmark_bisect;
 pub mod benchmark_compare;
 pub mod bootstrap_verify;
 pub mod byzantine;
 pub mod canary_deployment;
+pub mod canary_promotion_controller;
 pub mod capacity_planning;
 pub mod carbon_aware;
 
+pub mod cli;
+pub mod commands;
+pub mod compliance;
+pub mod compliance_scan;
+pub mod composite_slo;
+pub mod config_mgmt;
+pub mod config_reload;
+pub mod data_residency;
+pub mod connection_drain;
+pub mod consensus_monitoring;
 pub mod controller;
 pub mod cost_optimization;
 pub mod crd;
 pub mod data_pipeline;
 pub mod db_management;
 pub mod db_migrations;
+pub mod dependency_contract;
+pub mod degradation;
 pub mod deployment_strategy;
 pub mod error;
 
+pub mod error_budget;
+pub mod rollback_engine;
+pub mod event_processing;
+pub mod fair_share_rate_limiter;
+pub mod fair_share_scheduler;
+pub mod feature_flags;
+pub mod federation;
+pub mod federation_consistency;
+pub mod flag_bundle;
 pub mod fork_detector;
 pub mod incident;
 pub mod infra;
@@ -119,15 +148,26 @@ pub mod log_aggregation;
 pub mod log_scrub;
 pub mod logging;
 pub mod message_queue;
+pub mod migration_safety;
 pub mod network_observability;
+pub mod observability_contract;
+pub mod node_boot_verification;
 pub mod plugin_sdk;
+pub mod policy_engine;
+pub mod policy_promotion;
 pub mod preflight;
 #[path = "profiling/mod.rs"]
 pub mod profiling;
+pub mod provenance;
+pub mod replica_quotas;
+pub mod reproducible_build;
+pub mod progressive_config;
 pub mod runbook;
 pub mod scheduler;
+pub mod schema_evolution;
 pub mod schema_registry;
 pub mod sdk;
+pub mod secrets_broker;
 pub mod search;
 pub mod security;
 #[path = "telemetry.rs"]
@@ -140,8 +180,6 @@ pub mod rest_api;
 
 #[cfg(feature = "admission-webhook")]
 pub mod webhook;
-
-pub mod middleware;
 
 pub use crate::error::{Error, Result};
 
