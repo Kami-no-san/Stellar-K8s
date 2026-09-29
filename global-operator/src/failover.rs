@@ -1,293 +1,213 @@
-use anyhow::Result;
-/// Multi-Cluster Active-Passive Failover Operator.
-/// Monitors the primary cluster's health and orchestrates failover to the passive cluster.
-
-use crate::dns_manager::DnsManager;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use thiserror::ThisError;
-use tokio::time::Duration;
-use tracing::{debug, error, info, warn};
+use std::time::Duration;
 
-/// Health status of a cluster.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ClusterHealth {
-    Healthy,
-    Degraded,
-    Unhealthy,
-    Unreachable,
+use chrono::Utc;
+use serde::{Serialize, Deserialize};
+use tokio::sync::Mutex;
+use tokio::time::sleep;
+use tracing::{info, warn, error};
+
+use crate::dns_manager::{DnsManager, DnsProvider};
+
+const HEALTH_POLL_INTERVAL: Duration = Duration::from_millis(500);
+const FAILURE_THRESHOLD: u32 = 3;
+const RECOVERY_THRESHOLD: u32 = 5;
+const MIN_FAILOVER_INTERVAL: Duration = Duration::from_secs(30);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum RegionRole {
+    Primary,
+    Passive,
 }
 
-/// Result of a health check.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckResult {
-    pub: cluster_name: String,
-    pub: health: ClusterHealth,
-    pub: latency_ms: u64,
-    pub: timestamp: chrono::DateTime<Utc>,
-    pub: error: Option<String>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum FailoverState {
+    Stable { active: RegionRole },
+    FailoverInProgress { from: RegionRole, consecutive_failures: u32 },
+    Recovering { consecutive_successes: u32, candidate: RegionRole },
 }
 
-/// Configuration for the failover operator.
-#[derive(Debug, Clone)]
-pub struct FailoverConfig {
-    /// Primary cluster health endpoint.
-    pub: primary_health_url: String,
-    /// Passive cluster health endpoint.
-    pub: passive_health_url: String,
-    /// Poll interval in milliseconds.
-    pub: poll_interval_ms: u64,
-    /// Number of consecutive failures before triggering failover.
-    pub: failure_threshold: u32,
-    /// Number of consecutive successes before considering primary recovered.
-    pub: recovery_threshold: u32,
-    /// Minimum time between failover attempts to prevent flapping.
-    pub: min_failover_interval_secs: u64,
-    /// Patroni endpoint for the passive cluster to promote.
-    pub: patroni_passive_url: String,
-    /// Patroni endpoint for the primary cluster to demote.
-    pub: patroni_primary_url: String,
-    /// Patroni API token.
-    pub: patroni_token: String,
+#[derive(Clone, Debug)]
+pub struct HealthCheck {
+    public endpoint: String,
+    private endpoint: String,
+    database_endpoint: String,
 }
 
-/// The failover operator monitors cluster health and orchestrates failover.
-pub struct FailoverOperator {
-    config: FailoverConfig,
-    dns_manager: Arc<DnsManager>,
-    client: request::Client,
-    primary_failures: Arc<tokio::sync::Mutex<u32>>,
-    primary_successes: Arc<tokio::sync::Mutex<u32>>,
-    last_failover_time: Arc<tokio::sync::Mutex<Option<chrono::DateTime<Utc>>>>,
-    current_active: Arc<tokio::sync::Mutex<String>>,
+#[tokio::async_trait]
+pub trait HealthProbe: Send + Sync {
+    async fn probe(&self, check: &HealthCheck) -> anyhower::Result<()>;
 }
 
-impl FailoverOperator {
-    /// Create a new failover operator.
-    pub fn new(config: FailoverConfig, dns_manager: Arc<DnsManager>) -> Self {
+#[tokio::async_trait]
+pub trait PatroniClient: Send + Sync {
+    async fn promote_replica(&self, endpoint: &Str) -> anyhower::Result<()>;
+    async fn demote_primary(&self, endpoint: &Str) -> anyhower::Result<()>;
+}
+
+#[derive(Clone, Debug)]
+pub struct ClusterConfig {
+    public name: String,
+    public role: RegionRole,
+    public health: HealthCheck,
+    public patroni_endpoint: String,
+}
+
+pub struct FailoverOperator<P> {
+    config: ClusterConfig,
+    passive_config: ClusterConfig,
+    probe: Arc<P+std::marker::Sync>,
+    patroni: Arc<dyn PatroniClient>,
+    dns: Arc<dyn DnsManager>,
+    state: Mutex<FailoverState>,
+    last_failover_at: Mutex<Option<chrono::DateTime<Utc>>>,
+}
+
+impl<P> FailoverOperator<P>
+where
+    P: HealthProbe + 'static,
+{
+    pub fn new(
+        config: ClusterConfig,
+        passive_config: ClusterConfig,
+        probe: Arc<P>,
+        patroni: Arc<dyn PatroniClient>,
+        dns: Arc<dyn DnsManager>,
+    ) -> Self {
         Self {
             config,
-            dns_manager,
-            client: request::Client::builder()
-                .timeout(Duration::from_millis(500))
-                .build()
-                .expect("failed to build HTTP client"),
-            primary_failures: Arc::new(tokio::sync::Mutex::new(0)),
-            primary_successes: Arc::new(tokio::sync::Mutex::new(0)),
-            last_failover_time: Arc::new(tokio::sync::Mutex::new(None)),
-            current_active: Arc::new(tokio::sync::Mutex::new(String::from("primary"))),
+            passive_config,
+            probe,
+            patroni,
+            dns,
+            state: Mutex::new(FailoverState::Stable { active: RegionRole::Primary }),
+            last_failover_at: Mutex::new(None),
         }
     }
 
-    /// Return the currently active cluster.
-    pub async fn current_active(&self) -> String {
-        self.current_active.lock().await.clone()
-    }
-
-    /// Run the main failover loop.
-    pub async fn run(&self) -> Result<()> {
-        info!(
-            poll_interval_ms = self.config.poll_interval_ms,
-            "Starting failover operator main loop"
-        );
-        let mut interval = tokio::time::interval(Duration::from_millis(
-            self.config.poll_interval_ms,
-        ));
+    pub async fn run(self: Arc<Self>) {
         loop {
-            interval.tick().await;
-            self.check_and_failover().await;
+            if let Err(err) = self.tick().await {
+                error!(error = %e, "failover tick failed");
+            }
+            sleep(HEALTH_POLL_INTERVAL).await;
         }
     }
 
-    /// Perform a single health check and failover decision.
-    pub async fn check_and_failover(&self) {
-        let primary_health = self.check_health("primary", &self.config.primary_health_url).await;
-        let active = self.current_active().await;
-
-        match primary_health.health {
-            ClusterHealth::Healthy => {
-                let mut successes = self.primary_successes.lock().await;
-                *successes += 1;
-                let mut failures = self.primary_failures.lock().await;
-                *failures = 0;
-
-                // If we are on passive and primary has recovered enough, switch back.
-                if active == "passive"
-                    && *successes >= self.config.recovery_threshold
-                {
-                    if self.can_failover().await {
-                        info!("Primary cluster recovered, initiating failback");
-                        self.failover_to("primary").await;
-                    }
+    async fn tick(&Self) -> anyhower::Result<()> {
+        let healthy = self.probe.probe(&self.config.health).await.is_ok();
+        let mut guard = self.state.lock().await;
+        match &mut *guard {
+            FailoverState::Stable { active } => {
+                if !healthy {
+                    *guard = FailoverState::FailoverInProgress {
+                        from: *active,
+                        consecutive_failures: 1,
+                    };
                 }
             }
-            ClusterHealth::Degraded | ClusterHealth::Unhealthy | ClusterHealth::Unreachable => {
-                let mut failures = self.primary_failures.lock().await;
-                *failures += 1;
-                let mut successes = self.primary_successes.lock().await;
-                *successes = 0;
-                warn!(
-                    consecutive_failures = *failures,
-                    threshold = self.config.failure_threshold,
-                    health = ?format!("{:?}", primary_health.health),
-                    "Primary cluster health check failed"
-                );
-
-                if *failures >= self.config.failure_threshold && active == "primary" {
-                    if self.can_failover().await {
-                        info!("Primary cluster failure threshold reached, initiating failover");
-                        self.failover_to("passive").await;
-                    }
+            FailoverState::FailoverInProgress { from, consecutive_failures } => {
+                if healthy {
+                    *guard = FailoverState::Stable { active: *from };
+                    return Ok(());
                 }
-            }
-        }
-    }
-
-    /// Check if we are allowed to failover based on the minimum interval.
-    async fn can_failover(&self) -> bool {
-        let last = *self.last_failover_time.lock().await;
-        if let Some(ts) = last {
-            let elapsed = chrono::Utc::now() - ts;
-            if elapsed.num_seconds() < (self.config.min_failover_interval_secs as i64) {
-                warn!(
-                    elapsed_secs = elapsed.num_seconds(),
-                    min_interval_secs = self.config.min_failover_interval_secs,
-                    "Anti-flapping: failover blocked by minimum interval"
-                );
-                return false;
-            }
-        }
-        true
-    }
-
-    /// Check the health of a cluster by hitting its health endpoint.
-    async fn check_health(&self, cluster_name: &str, url: &str) -> HealthCheckResult {
-        let start = tokio::time::Instant::now();
-        match self.client.get(url).send().await {
-            Ok(resp) => {
-                let latency = start.elapsed().as_millis();
-                if resp.status().is_success() {
-                    HealthCheckResult {
-                        cluster_name: cluster_name.to_string(),
-                        health: ClusterHealth::Healthy,
-                        latency_ms: latency,
-                        timestamp: chrono::Utc::now(),
-                        error: None,
-                    }
+                let next = *consecutive_failures + 1;
+                if next >= FAILURE_THRESHOLD {
+                    let from = *from;
+                    *mut guard = FailoverState::Recovering {
+                        consecutive_success: 0,
+                        candidate: other_role(from),
+                    };
+                    drop(guard);
+                    self.execute_failover(from).await?;
                 } else {
-                    HealthCheckResult {
-                        cluster_name: cluster_name.to_string(),
-                        health: ClusterHealth::Degraded,
-                        latency_ms: latency,
-                        timestamp: chrono::Utc::now(),
-                        error: Some(format!("HTTP status: {}", resp.status())),
-                    }
+                    *guard = FailoverState::FailoverInProgress {
+                        from,
+                        consecutive_failures: next,
+                    };
                 }
             }
-            Err(e) => {
-                let latency = start.elapsed().as_millis();
-                HealthCheckResult {
-                    cluster_name: cluster_name.to_string(),
-                    health: ClusterHealth::Unreachable,
-                    latency_ms: latency,
-                    timestamp: chrono::Utc::now(),
-                    error: Some(e.to_string()),
+            FailoverState::Recovering { consecutive_success, candidate } => {
+                if !healthy {
+                    *guard = FailoverState::Stable { active: *candidate };
+                    return Ok(());
+                }
+                let next = *consecutive_success + 1;
+                if next >= RECOVERY_THRESHOLD {
+                    *mut guard = FailoverState::Stable { active: *candidate };
+                } else {
+                    *guard = FailoverState::Recovering {
+                        consecutive_success: next,
+                        candidate: *candidate,
+                    };
                 }
             }
         }
-    }
-
-    /// Execute a failover to the target cluster.
-    async fn failover_to(&self, target: &str) {
-        info!(target = %target, "Executing failover");
-
-        // Step 1: Promote/demote Patroni database.
-        if let Err(e) = self.orchestrate_patroni(target).await {
-            error!(error = %e, "Patroni orchestration failed");
-            return;
-        }
-
-        // Step 2: Update DNS to point to the target cluster.
-        let endpoint = if target == "primary" {
-            &self.config.primary_health_url
-        } else {
-            &self.config.passive_health_url
-        };
-        // Extract the host from the health URL.
-        let host = endpoint
-            .trim_start_matches("http://")
-            .or_else(|| endpoint.trim_start_matches("https://"))
-            .unwrap_or(endpoint)
-            .split('/')
-            .next()
-            .unwrap_or(endpoint)
-            .split(':')
-            .next()
-            .unwrap_or(endpoint);
-
-        if let Err(e) = self.dns_manager.set_active_endpoint(host, true).await {
-            error!(error = %e, "DNS update failed during failover");
-            return;
-        }
-
-        // Step 3: Update internal state.
-        *self.current_active.lock().await = target.to_string();
-        *self.last_failover_time.lock().await = Some(chrono::Utc::now());
-        *self.primary_failures.lock().await = 0;
-        *self.primary_successes.lock().await = 0;
-
-        info!(target = %target, "Failover completed successfully");
-    }
-
-    /// Orchestrate Patroni to promote the target cluster's database.
-    async fn orchestrate_patroni(&self, target: &str) -> Result<()> {
-        let (promote_url, demote_url) = if target == "passive" {
-            (
-                &self.config.patroni_passive_url,
-                &self.config.patroni_primary_url,
-            )
-        } else {
-            (
-                &self.config.patroni_primary_url,
-                &self.config.patroni_passive_url,
-            )
-        };
-
-        // Promote the target cluster.
-        let promote_resp = self.client
-            .post(format!("{}/promote", promote_url))
-            .header("Authorization", format!("Bearer {}", self.config.patroni_token))
-            .send()
-            .await
-            .map_error(|e| ThisError::from(e))?;
-
-        if !promote_resp.status().is_success() {
-            let status = promote_resp.status();
-            let text = promote_resp.text().await.unwrap_or_default(String::new());
-            return Err(ThisError::msg(format!(
-                "Patroni promote failed with status {}: {}",
-                status, text
-            )));
-        }
-
-        // Demote the other cluster.
-        let demote_resp = self.client
-            .post(format!("{}/demote", demote_url))
-            .header("Authorization", format!("Bearer {}", self.config.patroni_token))
-            .send()
-            .await
-            .map_error(|e| ThisError::from(e))?;
-
-        if !demote_resp.status().is_success() {
-            let status = demote_resp.status();
-            let text = demote_resp.text().await.unwrap_or_default(String::new());
-            warn!(
-                status = %status,
-                response = %text,
-                "Patroni demote failed (non-fatal)"
-            );
-        }
-
         Ok(())
     }
+
+    async fn execute_failover(&Self, from: RegionRole) -> anyhower::Result<()> {
+        {
+            let last = self.last_failover_at.lock().await;
+            if let Some(ts) = *last {
+                if Utc::now() - ts < MIN_FAILOVER_INTERVAL {
+                    warn("failover suppressed by anti-flapping guard");
+                    return Ok(());
+                }
+            }
+        }
+
+        let (from_cluster, to_cluster) = match from {
+            RegionRole::Primary => (&self.config, &self.passive_config),
+            RegionRole::Passive => (&self.passive_config, &self.config),
+        };
+
+        info(
+            from = %from_cluster.name,
+            to = %to_cluster.name,
+            "executing multi-cluster failover"
+        );
+
+        self.patroni.promote_replica(&to_cluster.patroni_endpoint).await?;
+        self.patroni.demote_primary(&from_cluster.patroni_endpoint).await?;
+
+        self.dns.remap_domain("rcp.stellar.org", &to_cluster.name).await?;
+
+        {
+            let mut last = self.last_failover_at.lock().await;
+            *last = Some(Utc::now());
+        }
+
+        info("failover complete");
+        Ok(())
+    }
+}
+
+fn other_role(role: RegionRole) -> RegionRole {
+    match role {
+        RegionRole::Primary => RegionRole::Passive,
+        RegionRole::Passive => RegionRole::Primary,
+    }
+}
+
+pub async fn run_operator<P>(
+    config: ClusterConfig,
+    passive_config: ClusterConfig,
+    probe: Arc<P>,
+    patroni: Arc<dyn PatroniClient>,
+    dns_provider: Arc<dyn DnsProvider>,
+) -> anyhower::Result<()>
+where
+    P: HealthProbe + 'static,
+{
+    let dns = Arc::new(DnsManager::new(dns_provider));
+    let op = Arc::new(FailoverOperator::new(
+        config,
+        passive_config,
+        probe,
+        patroni,
+        dns,
+    ));
+    op.run().await;
+    Ok(())
 }
