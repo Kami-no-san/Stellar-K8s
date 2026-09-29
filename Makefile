@@ -1,4 +1,4 @@
-.PHONY: help build test fmt fmt-check lint clean docker-build install-crd apply-samples dev-setup ci-local benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health benchmark-webhook-compare benchmark-webhook-save benchmark-all benchmark-soroban-cache wasm-cache-build run-dev helm-lint crd-gen run-local compose-up compose-dev compose-down compose-logs quickstart
+.PHONY: help build test fmt fmt-check lint clean docker-build install-crd apply-samples dev-setup ci-local benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health benchmark-webhook-compare benchmark-webhook-save benchmark-all benchmark-soroban-cache wasm-cache-build run-dev helm-lint crd-gen run-local compose-up compose-dev compose-down compose-logs quickstart third-party-licenses check-third-party-licenses generate-sbom p2p-firewall check-openapi-spec generate-api-docs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -108,6 +108,30 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--crd config/crd/stellarnode-crd.yaml \
 		--output docs/api-reference.md \
 		--check
+
+check-openapi-spec: ## Validate OpenAPI spec coverage against REST endpoints
+	@echo "→ Validating OpenAPI spec coverage..."
+	@python3 scripts/generate-openapi-spec.py --check
+
+third-party-licenses: ## Regenerate THIRD_PARTY_LICENSES.md from workspace Cargo.lock
+	@echo "→ Regenerating third-party license metadata..."
+	@bash scripts/generate-third-party-licenses.sh
+	@echo "✓ THIRD_PARTY_LICENSES.md updated"
+
+check-third-party-licenses: ## Verify THIRD_PARTY_LICENSES.md is up to date (CI gate)
+	@echo "→ Checking THIRD_PARTY_LICENSES.md is up to date..."
+	@bash scripts/generate-third-party-licenses.sh --check
+
+generate-sbom: ## Generate a Software Bill of Materials (SBOM) in CycloneDX JSON
+	@echo "→ Generating SBOM..."
+	@command -v cargo-cyclonedx >/dev/null 2>&1 || cargo install --locked cargo-cyclonedx
+	@$(CARGO) cyclonedx --format json --output-pattern prefix --output-cdx
+	@echo "✓ SBOM written to stellar-k8s.cdx.json"
+
+p2p-firewall: ## Build the P2P Gossip Network Threat Detection Firewall binary
+	@echo "→ Building p2p-firewall..."
+	@$(CARGO) build --release --locked -p p2p-firewall
+	@echo "✓ Binary: target/release/p2p-firewall"
 
 install-crd: ## Install CRDs
 	$(KUBECTL) apply -f config/crd/stellarnode-crd.yaml
