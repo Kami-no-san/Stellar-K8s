@@ -40,6 +40,14 @@ rules:
     resources: ["stellarbenchmarks/finalizers"]
     verbs: ["update"]
 
+  # Soroban contract deployment CRDs
+  - apiGroups: ["stellar.org"]
+    resources: ["contractwasms", "contractinstances"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["stellar.org"]
+    resources: ["contractwasms/status", "contractinstances/status"]
+    verbs: ["get", "update", "patch"]
+
   # BenchmarkReport CRD permissions
   - apiGroups: ["stellar.org"]
     resources: ["benchmarkreports"]

@@ -363,6 +363,7 @@ check-openapi-spec: ## Fail if OpenAPI spec is missing required operator routes
 
 install-crd: ## Install CRDs
 	$(KUBECTL) apply -f config/crd/stellarnode-crd.yaml
+	$(KUBECTL) apply -f config/crd/contractdeployment-crd.yaml
 
 apply-samples: install-crd ## Apply samples
 	$(KUBECTL) apply -f config/samples/
@@ -370,6 +371,7 @@ apply-samples: install-crd ## Apply samples
 crd-gen: ## Generate CRDs (output is sorted for deterministic diffs)
 	@echo "→ Generating CRDs..."
 	@$(CARGO) run --bin crdgen | python3 scripts/sort-manifests.py > config/crd/stellarnode-crd.yaml
+	@$(CARGO) run --bin contract-crdgen | python3 scripts/sort-manifests.py > config/crd/contractdeployment-crd.yaml
 	@echo "✓ CRD written to config/crd/stellarnode-crd.yaml (deterministic order)"
 
 regenerate: crd-gen generate-api-docs bundle ## Regenerate all derived artifacts (CRDs, API docs, OLM bundle)

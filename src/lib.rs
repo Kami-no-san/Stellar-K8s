@@ -152,6 +152,7 @@ pub mod node_boot_verification;
 pub mod plugin_sdk;
 pub mod policy_promotion;
 pub mod preflight;
+pub mod protocol_compatibility;
 pub mod profiling;
 pub mod provenance;
 pub mod replica_quotas;
