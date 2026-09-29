@@ -2521,6 +2521,21 @@
           "nullable": true,
           "type": "integer"
         },
+        "observedPassphraseSecretVersion": {
+          "description": "Resource version of the passphrase Secret last applied to the pods.",
+          "nullable": true,
+          "type": "string"
+        },
+        "observedSeedSecretVersion": {
+          "description": "Resource version of the validator seed Secret last applied to the pods.",
+          "nullable": true,
+          "type": "string"
+        },
+        "lastSecretRotationTime": {
+          "description": "RFC3339 timestamp of the last observed passphrase or seed secret rotation.",
+          "nullable": true,
+          "type": "string"
+        },
         "phase": {
           "description": "Current phase of the node lifecycle (Pending, Creating, Running, Syncing, Ready, Failed, Degraded, Remediating, Terminating)\n\nDEPRECATED: Use the conditions array instead. This field is maintained for backward compatibility and will be removed in a future version. The phase is now derived from the conditions.",
           "type": "string"
