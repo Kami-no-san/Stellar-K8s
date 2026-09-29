@@ -49,6 +49,16 @@
   <img src="https://img.shields.io/badge/Kubernetes-Operator-blue?style=for-the-badge&logo=kubernetes" alt="Kubernetes Operator" />
 </p>
 
+<!-- Documentation -->
+<p align="center">
+  <a href="https://m1s0g1.github.io/Stellar-K8s/">
+    <img src="https://img.shields.io/badge/📖_Documentation-Online-blue?style=for-the-badge&logo=readthedocs" alt="Documentation Site" />
+  </a>
+  <a href="https://m1s0g1.github.io/Stellar-K8s/">
+    <strong>Read the full documentation</strong>
+  </a>
+</p>
+
 > **Production-grade Stellar infrastructure in one command.**
 
 **Stellar-K8s** is a high-performance Kubernetes Operator written in strict Rust using `kube-rs`. It automates the deployment, management, and scaling of **Stellar Core**, **Horizon**, and **Soroban RPC** nodes, bringing the power of Cloud-Native patterns to the Stellar ecosystem.
@@ -101,6 +111,8 @@ Stellar-K8s follows the **Operator Pattern**, extending Kubernetes with a `Stell
 ## 🚀 Quick Start
 
 Get a Testnet node running in under 5 minutes.
+
+> 📖 **Full documentation:** this Quick Start is a condensed walkthrough — the [online documentation site](https://m1s0g1.github.io/Stellar-K8s/) has the complete guides (installation, configuration, networking, troubleshooting) for every node type.
 
 ### Option 1: Docker Compose (No K8s Required)
 
