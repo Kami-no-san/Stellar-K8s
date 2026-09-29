@@ -109,6 +109,8 @@ pub mod validator_score;
 pub mod stellar_registry;
 pub mod stellar_security;
 
+pub mod namespace_teardown;
+
 // Issue #1577 â€” Webhook Event Delivery for Ledger Close Notifications
 pub mod ledger_close_webhook;
 
@@ -262,6 +264,8 @@ pub use stellar_security::{
     StellarSecurityPolicySpec, StellarSecurityPolicyStatus,
 };
 
+pub mod namespace_teardown;
+
 // Issue #1577 â€” Ledger-Close Webhook CRD exports
 pub use ledger_close_webhook::{
     DeliveryLogEntry, DeliveryPhase, LedgerCloseEventType, LedgerClosePayload,
@@ -277,6 +281,10 @@ pub use incident::{
     IncidentSeverity as NetworkIncidentSeverity, IncidentSpec, IncidentStatus as NetworkIncidentStatus,
     IncidentTimelineEntry, IncidentType, PartitionDetails, QuorumAdjustmentRecommendation,
 };
+pub use namespace_teardown::{
+    ArchiveSpec, NamespaceTeardown, NamespaceTeardownSpec, NamespaceTeardownStatus,
+    TeardownCondition, TeardownPhase, TeardownStepStatus,
+};
 pub use multisig_operation::{
     AdminOperationType, CollectedSignature, MultiSigAuditEntry, MultiSigCondition,
     MultiSigOperation, MultiSigOperationSpec, MultiSigOperationStatus, MultiSigPhase,
@@ -287,5 +295,6 @@ pub use validator_score::{
     ValidatorLeaderboard, ValidatorLeaderboardSpec, ValidatorLeaderboardStatus, ValidatorScore,
     ValidatorScoreSpec, ValidatorScoreStatus,
 };
+
 
 
