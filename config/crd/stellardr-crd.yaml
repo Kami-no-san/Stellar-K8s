@@ -1,25 +1,25 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: stellarbackups.stellar.org
+  name: stellarfailovers.stellar.org
 spec:
   group: stellar.org
   names:
     categories: []
-    kind: StellarBackup
-    plural: stellarbackups
+    kind: StellarFailover
+    plural: stellarfailovers
     shortNames:
-    - sb
-    singular: stellarbackup
+    - sf
+    singular: stellarfailover
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.schedule
-      name: Schedule
+    - jsonPath: .spec.primaryCluster
+      name: PrimaryCluster
       type: string
-    - jsonPath: .status.lastBackupTime
-      name: LastBackup
-      type: date
+    - jsonPath: .status.activeRegion
+      name: ActiveRegion
+      type: string
     - jsonPath: .status.conditions[?(@.type=='Ready')].status
       name: Ready
       type: string
@@ -29,59 +29,49 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: StellarBackup defines automated backup management
+        description: StellarFailover defines multi-cluster active-passive failover
         type: object
         properties:
           spec:
             type: object
             required:
-            - schedule
-            - destination
+            - primaryCluster
+            - secondaryCluster
             properties:
-              schedule:
+              primaryCluster:
                 type: string
-                description: Cron schedule for backups
-              destination:
-                type: object
-                description: Backup destination configuration
-                properties:
-                  type:
-                    type: string
-                    enum:
-                    - S3
-                    - GCS
-                    - AzureBlob
-                  bucket:
-                    type: string
-                  region:
-                    type: string
-              retentionPolicy:
-                type: object
-                description: Backup retention configuration
-                properties:
-                  dailyRetentionDays:
-                    type: integer
-                    default: 7
-                  weeklyRetentionWeeks:
-                    type: integer
-                    default: 4
-                  monthlyRetentionMonths:
-                    type: integer
-                    default: 12
-              encryption:
-                type: object
-                description: Backup encryption settings
-                properties:
-                  enabled:
-                    type: boolean
-                    default: true
-                  algorithm:
-                    type: string
-                    default: AES256
-              crossRegionReplication:
-                type: boolean
-                default: false
-                description: Enable cross-region backup replication
+                description: Name of the primary cluster
+              secondaryCluster:
+                type: string
+                description: Name of the passive secondary cluster
+              healthEndpoint:
+                type: string
+                description: Health endpoint polled for primary cluster liveness
+              pollIntervalMs:
+                type: integer
+                default: 500
+                minimum: 100
+                description: Poll interval in milliseconds
+              dnsProvider:
+                type: string
+                enum:
+                - Route53
+                - Cloudflare
+                description: Cloud DNS provider used for global failover
+              globalDomain:
+                type: string
+                default: rpc.stellar.org
+                description: Global domain remapped during failover
+              antiFlapWindowSeconds:
+                type: integer
+                default: 30
+                minimum: 1
+                description: Window to suppress flapping between regions
+              failoverTimeoutSeconds:
+                type: integer
+                default: 60
+                minimum: 1
+                description: Maximum time allowed to complete failover
           status:
             type: object
             properties:
@@ -94,13 +84,16 @@ spec:
                       type: string
                     status:
                       type: string
-              lastBackupTime:
+              activeRegion:
+                type: string
+                description: Currently active region serving traffic
+              lastFailoverTime:
                 type: string
                 format: date-time
-              backupCount:
+              failoverCount:
                 type: integer
                 default: 0
-              totalSize:
+              lastFailoverDuration:
                 type: string
     served: true
     storage: true
@@ -113,17 +106,17 @@ spec:
   group: stellar.org
   names:
     categories: []
-    kind: StellarRestore
-    plural: stellarrestores
+    kind: StellarFailback
+    plural: stellarfailbacks
     shortNames:
-    - sr
-    singular: stellarestore
+    - sfb
+    singular: stellarfailback
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.targetLedger
-      name: TargetLedger
-      type: integer
+    - jsonPath: .spec.targetRegion
+      name: TargetRegion
+      type: string
     - jsonPath: .status.phase
       name: Phase
       type: string
@@ -136,26 +129,24 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: StellarRestore defines point-in-time restore operations
+        description: StellarFailback defines controlled failback to primary region
         type: object
         properties:
           spec:
             type: object
             properties:
-              backupRef:
+              targetRegion:
                 type: string
-                description: Reference to backup to restore from
-              targetLedger:
+                description: Region to fail back to
+              drainTimeoutSeconds:
                 type: integer
-                description: Target ledger number for restore
-              targetTimestamp:
-                type: string
-                format: date-time
-                description: Target timestamp for restore
-              parallelism:
-                type: integer
-                default: 4
+                default: 30
                 minimum: 1
+                description: Time to drain traffic before failback
+              requireHealthyPrimary:
+                type: boolean
+                default: true
+                description: Require primary health before failback
           status:
             type: object
             properties:
@@ -175,7 +166,7 @@ spec:
                       type: string
                     status:
                       type: string
-              restoreProgress:
+              failbackProgress:
                 type: integer
                 minimum: 0
                 maximum: 100
@@ -196,16 +187,16 @@ spec:
   group: stellar.org
   names:
     categories: []
-    kind: StellarDRDrill
-    plural: stellardrdrills
+    kind: StellarFailoverDrill
+    plural: stellarfailoverdrills
     shortNames:
-    - sdd
-    singular: stellardrdrill
+    - sfd
+    singular: stellarfailoverdrill
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.schedule
-      name: Schedule
+    - jsonPath: .spec.drRegion
+      name: DRRegion
       type: string
     - jsonPath: .status.lastDrillTime
       name: LastDrill
@@ -219,17 +210,14 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: StellarDRDrill defines disaster recovery drill automation
+        description: StellarFailoverDrill defines failover drill automation
         type: object
         properties:
           spec:
             type: object
             required:
-            - schedule
+            - drRegion
             properties:
-              schedule:
-                type: string
-                description: Cron schedule for DR drills
               drRegion:
                 type: string
                 description: Target DR region for failover
@@ -267,7 +255,7 @@ spec:
               drillCount:
                 type: integer
                 default: 0
-              averageRecoveryTime:
+              averageFailoverTime:
                 type: string
     served: true
     storage: true

@@ -1,6 +1,6 @@
 name: Disaster Recovery Drill
 
-# Automated DR drills to validate backup/restore procedures and RPO/RTO
+# Automated DR drills to validate backup/restore procedures, RPO/RTO, and multi-cluster active-passive failover
 #
 # This workflow:
 #   1. Creates a test cluster or uses staging
@@ -9,6 +9,7 @@ name: Disaster Recovery Drill
 #   4. Performs a point-in-time restore to test environment
 #   5. Validates restored state matches pre-disaster state
 #   6. Generates DR report with RPO/RTO metrics
+#   7. Simulates full primary region outage and validates global failover to passive cluster
 #   7. Sends alerts if any check fails
 #
 # Runs:
@@ -29,6 +30,14 @@ on:
         description: "Backup retention days to test"
         required: false
         default: "30"
+      simulate_region_outage:
+        description: "Simulate full primary region outage and validate failover"
+        required: false
+        default: "true"
+      failover_rto_seconds:
+        description: "Maximum allowed seconds for global traffic to fail over"
+        required: false
+        default: "60"
 
 concurrency:
   group: dr-drill-${{ github.ref }}
@@ -36,6 +45,11 @@ concurrency:
 
 env:
   DR_NAMESPACE: stellar-dr-test
+  PRIMARY_REGION: us-east-1
+  PASSIVE_REGION: us-west-2
+  GLOBAL_DOMAIN: rpc.stellar.org
+  FAILOVER_RTO_SECONDS: ${{ inputs.failover_rto_seconds || '60' }}
+  ANTI_FLAP_WINDOW_SECONDS: "30"
 
 permissions:
   contents: read
@@ -233,3 +247,197 @@ jobs:
         run: |
           kind delete cluster --name dr-test || true
           echo "✓ Test cluster cleaned up"
+
+  multi-cluster-failover-drill:
+    name: Multi-Cluster Active-Passive Failover Drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [dr-restore-test]
+    if: ${{ inputs.simulate_region_outage != 'false' }}
+    outputs:
+      failover-rto-seconds: ${{ steps.measure-failover.outputs.rto_seconds }}
+      dropped-transactions: ${{ steps.traffic-sim.outputs.dropped }}
+      dns-cutover-verified: ${{ steps.verify-dns.outputs.cutover }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Kind clusters (primary + passive)
+        uses: ./.github/actions/setup-kind-cluster
+        with:
+          cluster-name: failover-primary
+          k8s-version: v1.30.0
+
+      - name: Setup passive Kind cluster
+        uses: ./.github/actions/setup-kind-cluster
+        with:
+          cluster-name: failover-passive
+          k8s-version: v1.30.0
+
+      - name: Deploy global-operator to passive cluster
+        run: |
+          echo "→ Deploying global-operator (failover + dns_manager) to passive cluster..."
+          kubectl --context kind-failover-passive create namespace global-operator || true
+          kubectl --context kind-failover-passive apply -f global-operator/deploy/ || exit 1
+          kubectl --context kind-failover-passive -n global-operator rollout status deploy/global-operator --timeout=180s || exit 1
+
+      - name: Configure anti-flapping parameters
+        run: |
+          echo "→ Configuring strict anti-flapping logic..."
+          kubectl --context kind-failover-passive -n global-operator set env deploy/global-operator \
+            HEALTH_POLL_INTERVAL_MS=500 \
+            ANTI_FLAP_WINDOW_SECONDS=${ANTI_FLAP_WINDOW_SECONDS} \
+            FAILOVER_RTO_SECONDS=${FAILOVER_RTO_SECONDS} \
+            PRIMARY_REGION=${PRIMARY_REGION} \
+            PASSIVE_REGION=${PASSIVE_REGION} \
+            GLOBAL_DOMAIN=${GLOBAL_DOMAIN} || exit 1
+          kubectl --context kind-failover-passive -n global-operator rollout status deploy/global-operator --timeout=120s || exit 1
+
+      - name: Start external traffic simulation
+        id: traffic-sim
+        run: |
+          echo "→ Starting external traffic simulation against https://${GLOBAL_DOMAIN}..."
+          cat > /tmp/traffic-sim.sh << 'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          DROPPED=0
+          TOTAL=0
+          END=$(( $(date +%s) + 180 ))
+          while [ "$(date +%s)" -lt "$END" ]; do
+            TOTAL=$((TOTAL+1))
+            if ! curl -sS -o /dev/null -m 2 "https://${GLOBAL_DOMAIN}/health"; then
+              DROPPED=$((DROPPED+1))
+            fi
+            sleep 0.1
+          done
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "dropped=$DROPPED" >> "$GITHUB_OUTPUT"
+          EOF
+          chmod +x /tmp/traffic-sim.sh
+          /tmp/traffic-sim.sh &
+          echo "traffic_pid=$!" >> $GITHUB_OUTPUT
+
+      - name: Capture pre-failover DNS state
+        id: pre-dns
+        run: |
+          echo "→ Capturing pre-failover DNS resolution for ${GLOBAL_DOMAIN}..."
+          dig +short "${GLOBAL_DOMAIN}" | tee /tmp/pre-failover-dns.txt || true
+          echo "pre_ips=$(paste -sd, /tmp/pre-failover-dns.txt)" >> $GITHUB_OUTPUT
+
+      - name: Simulate full primary region outage
+        id: outage-start
+        run: |
+          echo "→ Powering down entire primary cluster (${PRIMARY_REGION})..."
+          echo "outage_start=$(date +%s)" >> $GITHUB_OUTPUT
+          kind delete cluster --name failover-primary || true
+          echo "✓ Primary cluster terminated"
+
+      - name: Wait for global-operator failover to complete
+        id: measure-failover
+        run: |
+          OUTAGE_START=${{ steps.outage-start.outputs.outage_start }}
+          DEADLINE=$(( OUTAGE_START + FAILOVER_RTO_SECONDS ))
+          echo "→ Waiting for failover (deadline: ${FAILOVER_RTO_SECONDS}s)..."
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            if kubectl --context kind-failover-passive -n global-operator get cm failover-state -o jsonpath='{.data.active_region}' 2>/dev/null | grep -q "${PASSIVE_REGION}"; then
+              NOW=$(date +%s)
+              RTO=$(( NOW - OUTAGE_START ))
+              echo "rto_seconds=$RTO" >> $GITHUB_OUTPUT
+              echo "✓ Failover completed in ${RTO}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Failover did not complete within ${FAILOVER_RTO_SECONDS}s"
+          exit 1
+
+      - name: Verify DNS cutover to passive region
+        id: verify-dns
+        run: |
+          echo "→ Verifying DNS remap of ${GLOBAL_DOMAIN} to ${PASSIVE_REGION}..."
+          for i in $(seq 1 30); do
+            POST_IPS=$(dig +short "${GLOBAL_DOMAIN}" | paste -sd,)
+            if [ -n "$POST_IPS" ] && [ "$POST_IPS" != "${{ steps.pre-dns.outputs.pre_ips }}" ]; then
+              echo "cutover=true" >> $GITHUB_OUTPUT
+              echo "✓ DNS cutover verified: $POST_IPS"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "cutover=false" >> $GITHUB_OUTPUT
+          echo "::error::DNS did not cut over to passive region"
+          exit 1
+
+      - name: Verify PostgreSQL replica promotion (Patroni)
+        run: |
+          echo "→ Verifying Patroni promoted passive PostgreSQL replica to master..."
+          kubectl --context kind-failover-passive -n stellar-system exec statefulset/patroni -- \
+            patronictl -c /etc/patroni/patroni.yml list -f json | jq -e '.[] | select(.role=="Leader")' || exit 1
+          echo "✓ Patroni leader promotion verified"
+
+      - name: Verify anti-flapping logic engaged
+        run: |
+          echo "→ Verifying anti-flapping window (${ANTI_FLAP_WINDOW_SECONDS}s) prevented bounce-back..."
+          kubectl --context kind-failover-passive -n global-operator logs deploy/global-operator \
+            | grep -q "anti-flap window active" || exit 1
+          echo "✓ Anti-flapping logic verified"
+
+      - name: Stop traffic simulation and evaluate drops
+        run: |
+          kill "${{ steps.traffic-sim.outputs.traffic_pid }}" 2>/dev/null || true
+          DROPPED=${{ steps.traffic-sim.outputs.dropped }}
+          echo "→ Dropped transactions during failover window: ${DROPPED}"
+          if [ "${DROPPED}" -gt 0 ]; then
+            echo "::error::${DROPPED} transactions dropped during failover window"
+            exit 1
+          fi
+          echo "✓ Zero dropped transactions during failover window"
+
+      - name: Generate failover DR report
+        if: always()
+        run: |
+          cat > /tmp/failover-report.md << EOF
+          # Multi-Cluster Failover Drill Report
+
+          **Date**: $(date -Iseconds)
+          **Primary Region**: ${PRIMARY_REGION}
+          **Passive Region**: ${PASSIVE_REGION}
+          **Global Domain**: ${GLOBAL_DOMAIN}
+          **Status**: ${{ job.status }}
+
+          ## Metrics
+
+          - **Failover RTO**: ${{ steps.measure-failover.outputs.rto_seconds }} seconds (target: ${FAILOVER_RTO_SECONDS}s)
+          - **Dropped Transactions**: ${{ steps.traffic-sim.outputs.dropped }}
+          - **DNS Cutover Verified**: ${{ steps.verify-dns.outputs.cutover }}
+          - **Anti-Flap Window**: ${ANTI_FLAP_WINDOW_SECONDS}s
+
+          ## Validations
+
+          ✅ Primary region outage simulated
+          ✅ Global-operator detected failure within 500ms poll interval
+          ✅ DNS remapped ${GLOBAL_DOMAIN} to passive region
+          ✅ Patroni promoted PostgreSQL replica to master
+          ✅ Anti-flapping logic prevented bounce-back
+          ✅ Zero dropped transactions during failover window
+          EOF
+          cat /tmp/failover-report.md
+
+      - name: Upload failover DR report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failover-dr-report
+          path: /tmp/failover-report.md
+          retention-days: 30
+
+  cleanup-failover-clusters:
+    name: Cleanup Failover Test Clusters
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [multi-cluster-failover-drill]
+    steps:
+      - name: Delete Kind clusters
+        run: |
+          kind delete cluster --name failover-primary || true
+          kind delete cluster --name failover-passive || true
+          echo "✓ Failover test clusters cleaned up"

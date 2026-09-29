@@ -8,6 +8,9 @@
        service mesh.
     3. A NetworkPolicy that allows the state-sync sidecar to reach the Stellar
        Core HTTP port (11626) within the pod.
+    4. A ConfigMap encoding the anti-flapping failover policy (consecutive
+       failure threshold, cooldown window, DNS TTL) consumed by the global
+       operator's failover state machine.
 
   Enabled when featureFlags.enableDr == "true" AND crossRegion.enabled == true.
 */ -}}
@@ -33,6 +36,26 @@ rules:
   - apiGroups: ["stellar.org"]
     resources: ["stellarnodes", "stellarnodes/status"]
     verbs: ["get", "list", "watch", "patch", "update"]
+---
+# ─── ConfigMap: anti-flapping failover policy ────────────────────────────────
+# The global operator reads this ConfigMap to drive its failover state machine.
+# `consecutiveFailures` and `cooldownSeconds` implement strict anti-flapping:
+# a region is only promoted after N consecutive failed health probes, and no
+# further promotion is permitted until the cooldown window has elapsed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "stellar-operator.fullname" . }}-failover-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "stellar-operator.labels" . | nindent 4 }}
+    stellar.org/component: failover-policy
+data:
+  healthProbeIntervalMs: {{ $crossRegion.healthProbeIntervalMs | default 500 | quote }}
+  consecutiveFailures: {{ $crossRegion.consecutiveFailures | default 3 | quote }}
+  cooldownSeconds: {{ $crossRegion.cooldownSeconds | default 300 | quote }}
+  dnsTtlSeconds: {{ $crossRegion.dnsTtlSeconds | default 30 | quote }}
+  globalDomain: {{ $crossRegion.globalDomain | default "rpc.stellar.org" | quote }}
 ---
 # ─── ClusterRoleBinding ───────────────────────────────────────────────────────
 apiVersion: rbac.authorization.k8s.io/v1
@@ -68,6 +91,7 @@ metadata:
   annotations:
     stellar.org/region: {{ .region | default "unknown" | quote }}
     stellar.org/bridge-endpoint: {{ .endpoint | quote }}
+    stellar.org/role: {{ .role | default "standby" | quote }}
 spec:
   type: ExternalName
   externalName: {{ .endpoint }}
@@ -121,5 +145,10 @@ spec:
           protocol: TCP
     {{- end }}
     {{- end }}
+    # Allow the operator to reach cloud DNS APIs (Route53 / Cloudflare) to
+    # remap the global rpc.stellar.org record during failover.
+    - ports:
+        - port: 443
+          protocol: TCP
 
 {{- end }}
