@@ -393,6 +393,29 @@ kubectl exec -n stellar-system <horizon-pod> -- \
 
 A node transitions to `Ready` when the health endpoint confirms full sync. See [Health Checks](./health-checks.md).
 
+### Q: What does "Joining SCP" mean, and when is it a problem?
+
+**A:** `Joining SCP` is a transitional Stellar Core state meaning the node is up and has connected to peers, and is now exchanging SCP messages to join consensus for the first time — the handshake layer works, consensus participation hasn't started yet. It is the expected state for a freshly deployed validator and normally lasts a **few minutes**; the node then advances to `Synced!` (or first to `Catching up` on a fresh volume). Note that it is distinct from `Catching up` (replaying ledger history — can legitimately take hours) and from `Syncing` (see [the previous question](#q-what-does-it-mean-when-a-node-is-in-syncing-phase)).
+
+**What to check:** query the state field from the Core admin API:
+
+```bash
+# .info.state is the field to inspect (returns "Joining SCP", "Synced!", ...)
+kubectl exec -n <namespace> <validator-pod> -- curl -s http://localhost:11626/info | jq -r '.info.state'
+
+# Connected peer count — the key discriminator, see below
+kubectl exec -n <namespace> <validator-pod> -- curl -s http://localhost:11626/peers | jq '.authenticated_peers | length'
+```
+
+**When it's normal:**
+
+- Fresh deployment; peers connected (`/peers` count > 0); state advances to `Synced!` within minutes.
+- First boot after volume recreation or a catch-up restart.
+
+**When it indicates a connectivity problem:** the pod runs, `/info` keeps returning `Joining SCP`, and the peer count stays at **0**. The operator's own alerting encodes this threshold — `StellarCoreNoPeers` fires critical at 5 minutes of zero peers ([alert rules](https://github.com/OtowoOrg/Stellar-K8s/blob/main/monitoring/stellar-core-metrics.yaml)). With zero peers the node can never see a quorum, so it will sit in `Joining SCP` indefinitely. The usual cause is blocked **outbound** access to peer ports (commonly missed in firewalls, NAT gateways, and cloud security groups). Work through the [Networking Troubleshooting Guide](./troubleshooting/networking.md) — start with §6.1 "Required outbound connections from validators" and the P2P firewalling checks — then the [Network Configuration Guide](./networking/index.md) for egress hardening, and the [Peer Discovery FAQ](#q-how-does-peer-discovery-work-in-stellar-k8s) if the peer list itself is empty.
+
+While stuck, the [readiness probe](./operations/readiness-probe-states.md) keeps the pod **Not Ready** (`Joining SCP` is not a ready state), so the node is also removed from Service endpoints.
+
 ### Q: What should I do if I see "Connection Refused" errors?
 
 **A:** This means a connection was rejected at the target port. Troubleshoot in order:
