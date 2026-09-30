@@ -13,6 +13,18 @@
       "apiVersion": "compliance.stellar.org/v1alpha1"
     },
     {
+      "file": "ContractWASM-stellar.org-v1alpha1.json",
+      "source": "config/crd/contractdeployment-crd.yaml",
+      "kind": "ContractWASM",
+      "apiVersion": "stellar.org/v1alpha1"
+    },
+    {
+      "file": "ContractInstance-stellar.org-v1alpha1.json",
+      "source": "config/crd/contractdeployment-crd.yaml",
+      "kind": "ContractInstance",
+      "apiVersion": "stellar.org/v1alpha1"
+    },
+    {
       "file": "ControlPlaneHealth-stellar.org-v1alpha1.json",
       "source": "config/crd/controlplanehealth-crd.yaml",
       "kind": "ControlPlaneHealth",

@@ -95,6 +95,10 @@
           "type": "string",
           "enum": ["trace", "debug", "info", "warn", "error"]
         },
+        "appArmorEnabled": {
+          "type": "boolean",
+          "description": "Enable AppArmor annotations on operator-managed workload pods"
+        },
         "restApiEnabled": {
           "type": "boolean"
         },

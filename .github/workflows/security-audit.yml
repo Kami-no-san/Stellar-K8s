@@ -77,6 +77,18 @@ jobs:
         echo "- Software Bill of Materials (SBOM)" >> $GITHUB_STEP_SUMMARY
         echo "- Dependency tree with licenses" >> $GITHUB_STEP_SUMMARY
 
+  verify-mtls:
+    name: Verify mTLS configuration (skips without a cluster)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # scripts/verify-mtls.sh skips (exit 0) when kubectl or a kubeconfig is
+      # absent, and exits non-zero when mTLS certs are not ready. That exit code
+      # propagates to this job result.
+      - name: Run mTLS verification (skips when no cluster is available)
+        run: make verify-mtls
+
   supply-chain-security:
     name: Supply Chain Security
     runs-on: ubuntu-latest
