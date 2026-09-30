@@ -8,6 +8,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'requirements.txt'
+      - 'scripts/check_mkdocs_nav.py'
       - '.github/workflows/docs-deploy.yml'
   workflow_dispatch:
 
@@ -52,6 +53,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check documentation navigation
+        run: python scripts/check_mkdocs_nav.py
 
       - name: Build documentation (strict)
         # Issue #1633: mkdocs.yml enables strict mode, so this build fails on

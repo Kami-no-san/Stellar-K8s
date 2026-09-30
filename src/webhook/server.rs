@@ -1310,6 +1310,7 @@ mod tests {
             "metadata": {
                 "name": "my-validator",
                 "namespace": "default",
+                "labels": { "project-id": "stellar-test", "owner": "platform-team" }
                 "labels": {
                     "project-id": "test",
                     "owner": "test"
@@ -1382,6 +1383,7 @@ mod tests {
             "metadata": {
                 "name": "no-config",
                 "namespace": "default",
+                "labels": { "project-id": "stellar-test", "owner": "platform-team" }
                 "labels": {
                     "project-id": "test",
                     "owner": "test"
@@ -1422,6 +1424,7 @@ mod tests {
             "metadata": {
                 "name": "my-validator",
                 "namespace": "default",
+                "labels": { "project-id": "stellar-test", "owner": "platform-team" }
                 "labels": {
                     "project-id": "test",
                     "owner": "test"
@@ -1492,6 +1495,7 @@ mod tests {
             "metadata": {
                 "name": "test",
                 "namespace": "default",
+                "labels": { "project-id": "stellar-test", "owner": "platform-team" }
                 "labels": {
                     "project-id": "test",
                     "owner": "test"
@@ -1575,6 +1579,7 @@ mod tests {
             "metadata": {
                 "name": "test",
                 "namespace": "default",
+                "labels": { "project-id": "stellar-test", "owner": "platform-team" }
                 "labels": {
                     "project-id": "test",
                     "owner": "test"

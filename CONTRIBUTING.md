@@ -255,6 +255,12 @@ assertion style to follow when adding new suites.
 - Unused imports must be removed before merging.
 - Feature-gated code that is no longer used should be deleted, not suppressed.
 
+### Container environment variable conventions
+
+- **Seed injection deduplication**: A `StellarNode` may configure its validator seed via the legacy `spec.validatorConfig.seedSecretRef` (a plain Kubernetes Secret reference) or the newer `spec.validatorConfig.seedSecretSource` (KMS/ESO/CSI/Vault-backed). Both paths inject an environment variable named `STELLAR_CORE_SEED` into the pod spec. To prevent the API server from rejecting the pod due to duplicate environment variable names, the pod builder merges env vars **by name** using `merge_env_overrides` (see `src/controller/resources.rs`) instead of appending. The last writer wins, which gives `seedSecretSource` precedence over `seedSecretRef` — matching the precedence in `ValidatorConfig::resolve_seed_source()`. If both fields are set, only one `STELLAR_CORE_SEED` entry appears in the rendered pod spec, sourced from `seedSecretSource`.
+- **No hard rejection**: The operator does **not** reject a CR that sets both `seedSecretRef` and `seedSecretSource`; it silently deduplicates. This preserves backward compatibility with existing clusters that may have both fields populated during migration.
+- **Auditing other env vars**: The same `merge_env_overrides` mechanism is used for `stellarCoreEnv` (Validator), `horizonEnv` (Horizon), and any custom env vars injected via CSI/Vault. Contributors adding new env var injection paths **must** route them through `merge_env_overrides` (or `build_container` for the legacy `seedSecretRef` path) rather than using `Vec::extend` on the container's `env` list. A property-based test in `src/controller/seed_env_dedupe_test.rs` asserts uniqueness of all env var names across all three node types.
+
 ### Documentation conventions
 
 - Documentation files use `kebab-case.md` (e.g., `disk-scaling.md`).

@@ -44,6 +44,13 @@ spec:
           annotations:
             summary: 'Stellar node {{ `{{ $labels.node_name }}` }} ledger close time is high'
             description: 'Ledger close time is {{ `{{ $value }}` }}s, above the {{ .Values.monitoring.prometheusRule.ledgerCloseTimeThresholdSeconds }}s threshold.'
+        - alert: StellarFeeMarketSpike
+          expr: stellar_fee_market_p95_stroops > stellar_fee_market_spike_threshold_stroops
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Stellar {{ `{{ $labels.fee_type }}` }} fees exceed the configured threshold'
+            description: 'P95 fee on {{ `{{ $labels.network }}` }} is {{ `{{ $value }}` }} stroops; review fee strategy and Soroban resource limits.'
         - alert: StellarAssetLargeSupplyChange
           expr: increase(stellar_asset_large_supply_changes_total[5m]) > 0
           labels:
