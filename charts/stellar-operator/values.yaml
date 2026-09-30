@@ -23,6 +23,34 @@ hooks:
 webhook:
   enabled: false
 
+# ── WASM Bytecode Optimizer Sidecar (issue #325) ─────────────────────────────
+# Deploys the wasm-opt Alpine sidecar and a MutatingWebhookConfiguration that
+# intercepts StellarNode WASM deployments, optimises the bytecode, and replaces
+# the payload with the reduced binary.  Requires webhook.enabled=true.
+wasmOptimizer:
+  enabled: false
+  # Optimisation level passed to wasm-opt (0=none … 4=aggressive, z=size).
+  optLevel: "3"
+  # Hard cap on the optimisation step; must be < webhookTimeoutSeconds.
+  timeoutSecs: "8"
+  # Kubernetes admission webhook timeout (max 10 s per K8s spec).
+  webhookTimeoutSeconds: 10
+  # Ignore = fail-open; optimizer failures never block deployments.
+  failurePolicy: "Ignore"
+  replicaCount: 2
+  sidecar:
+    image: "ghcr.io/stellar/wasm-opt-sidecar:latest"
+    pullPolicy: IfNotPresent
+  serviceAccount:
+    annotations: {}
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
 mtls:
   enabled: false
 
