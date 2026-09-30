@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
+## Unreleased
+
+### Fixed
+
+• Deduplicate operator environment variables.
+• Prevent command injection in validator commands.
+• Scope config table lookups to the intended table.
+• Gate generated AppArmor annotations behind `STELLAR_APPARMOR_ENABLED`.
 
 ## Chart v2.8.0 (2026-09-03) [minor]
 

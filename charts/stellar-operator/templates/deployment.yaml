@@ -82,6 +82,10 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAMESPACE
               value: {{ .Release.Namespace | quote }}
+            {{- if .Values.operator.appArmorEnabled }}
+            - name: STELLAR_APPARMOR_ENABLED
+              value: "true"
+            {{- end }}
             {{- if .Values.operator.restApiEnabled }}
             - name: REST_API_PORT
               value: {{ .Values.operator.restApiPort | quote }}

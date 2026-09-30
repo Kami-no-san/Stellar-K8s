@@ -157,6 +157,8 @@ podDisruptionBudget:
 operator:
   # Log level: debug, info, warn, error
   logLevel: info
+  # Enables AppArmor annotations on operator-managed workload pods.
+  appArmorEnabled: false
   # Enable REST API
   restApiEnabled: true
   # REST API port

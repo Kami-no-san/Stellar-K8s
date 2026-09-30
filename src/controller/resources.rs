@@ -2708,9 +2708,22 @@ fn build_pod_template(
     }
     // ==========================================================================
 
+    let apparmor_enabled = std::env::var("STELLAR_APPARMOR_ENABLED")
+        .is_ok_and(|value| value.eq_ignore_ascii_case("true"));
     let mut apparmor_annotations = BTreeMap::new();
-    if let Some(containers) = &pod_spec.init_containers {
-        for container in containers {
+    if apparmor_enabled {
+        if let Some(containers) = &pod_spec.init_containers {
+            for container in containers {
+                apparmor_annotations.insert(
+                    format!(
+                        "container.apparmor.security.beta.kubernetes.io/{}",
+                        container.name
+                    ),
+                    "runtime/default".to_string(),
+                );
+            }
+        }
+        for container in &pod_spec.containers {
             apparmor_annotations.insert(
                 format!(
                     "container.apparmor.security.beta.kubernetes.io/{}",
@@ -2719,15 +2732,6 @@ fn build_pod_template(
                 "runtime/default".to_string(),
             );
         }
-    }
-    for container in &pod_spec.containers {
-        apparmor_annotations.insert(
-            format!(
-                "container.apparmor.security.beta.kubernetes.io/{}",
-                container.name
-            ),
-            "runtime/default".to_string(),
-        );
     }
 
     let mut pod_object_meta = ObjectMeta {
