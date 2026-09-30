@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v3.6.0 (2026-09-30) [minor]
+
+• Merge pull request #1649 from Divine-designs/feat/sla-reporting-delegation-rewards
+✨ feat: uptime SLA reporting and delegation reward tracking
+✨ feat: add uptime SLA tracking and delegation reward ledger modules
+
+
 ## Chart v3.5.0 (2026-09-30) [minor]
 
 • Merge pull request #1648 from AnibeAchema/feat/1499-namespace-teardown-crd
