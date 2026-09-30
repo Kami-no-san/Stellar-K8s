@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v3.5.0 (2026-09-30) [minor]
+
+• Merge pull request #1648 from AnibeAchema/feat/1499-namespace-teardown-crd
+• Feat/1499 namespace teardown crd
+✨ feat(crd): add NamespaceTeardown state-machine CRD (#1499)
+
+
 ## Chart v3.4.0 (2026-09-30) [minor]
 
 • Merge pull request #1647 from AnibeAchema/feat/1500-tenant-isolation-crd
