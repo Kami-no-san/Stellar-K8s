@@ -156,7 +156,6 @@ pub mod policy_promotion;
 pub mod preflight;
 pub mod profiling;
 pub mod provenance;
-pub mod replica_quotas;
 pub mod reproducible_build;
 pub mod progressive_config;
 pub mod runbook;
