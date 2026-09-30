@@ -159,6 +159,7 @@ pub mod plugin_sdk;
 pub mod policy_engine;
 pub mod policy_promotion;
 pub mod preflight;
+pub mod protocol_compatibility;
 #[path = "profiling/mod.rs"]
 pub mod profiling;
 pub mod provenance;

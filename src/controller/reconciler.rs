@@ -3421,25 +3421,149 @@ pub(crate) fn apply_stellar_node(
                             .and_then(|a| a.get("stellar.org/current-protocol"))
                             .and_then(|v| v.parse().ok())
                             .unwrap_or(0);
-                        let now_unix = chrono::Utc::now().timestamp();
-                        match controller
-                            .plan_and_sync(&client, &node, &timeline, current_protocol, now_unix)
-                            .await
+                        let required_caps: Vec<String> = node
+                            .metadata
+                            .annotations
+                            .as_ref()
+                            .and_then(|annotations| annotations.get("stellar.org/required-caps"))
+                            .map(|caps| {
+                                caps.split(',')
+                                    .map(str::trim)
+                                    .filter(|cap| !cap.is_empty())
+                                    .map(str::to_string)
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        let required_xdr_version: u32 = node
+                            .metadata
+                            .annotations
+                            .as_ref()
+                            .and_then(|annotations| {
+                                annotations.get("stellar.org/required-xdr-version")
+                            })
+                            .and_then(|value| value.parse().ok())
+                            .unwrap_or(0);
+                        let mut compatibility_blocked = false;
+                        if !required_caps.is_empty()
+                            || required_xdr_version > 0
+                            || current_protocol > 0
                         {
-                            Ok(Some(plan)) => {
-                                info!(
-                                    "GitOps upgrade planned for {}/{}: protocol v{} via {}",
-                                    namespace, name, plan.target_protocol, engine_str
-                                );
+                            let current_version = node
+                                .spec
+                                .version
+                                .rsplit(':')
+                                .next()
+                                .unwrap_or(&node.spec.version);
+                            match crate::protocol_compatibility::check_compatibility(
+                                current_version,
+                                current_protocol,
+                                required_xdr_version,
+                                &required_caps,
+                            ) {
+                                Ok(report) if !report.compatible => {
+                                    compatibility_blocked = true;
+                                    let mut incompatibilities = Vec::new();
+                                    if !report.protocol_compatible {
+                                        incompatibilities.push(format!(
+                                            "core protocol support is below network protocol {current_protocol}"
+                                        ));
+                                    }
+                                    if !report.xdr_compatible {
+                                        incompatibilities.push(format!(
+                                            "core XDR version does not support required XDR version {required_xdr_version}"
+                                        ));
+                                    }
+                                    if !report.unsupported_caps.is_empty() {
+                                        incompatibilities.push(format!(
+                                            "unsupported CAPs: {}",
+                                            report.unsupported_caps.join(", ")
+                                        ));
+                                    }
+                                    let detail = incompatibilities.join("; ");
+                                    let recommendation = report
+                                        .recommended_version
+                                        .as_deref()
+                                        .unwrap_or("a release supporting the required protocol/CAPs/XDR");
+                                    warn!(
+                                        "Protocol upgrade blocked for {}/{}: core {} {}; upgrade to {}",
+                                        namespace, name, current_version, detail, recommendation
+                                    );
+                                    let annotations = serde_json::json!({
+                                        "stellar.org/protocol-compatibility-warning": format!(
+                                            "{detail}; recommended stellar-core version: {recommendation}"
+                                        )
+                                    });
+                                    let nodes: Api<StellarNode> = if let Some(ns) = &ctx.watch_namespace {
+                                        Api::namespaced(client.clone(), ns)
+                                    } else {
+                                        Api::all(client.clone())
+                                    };
+                                    if let Err(error) = nodes
+                                        .patch(
+                                            &name,
+                                            &PatchParams::default(),
+                                            &Patch::Merge(&serde_json::json!({
+                                                "metadata": { "annotations": annotations }
+                                            })),
+                                        )
+                                        .await
+                                    {
+                                        warn!("Failed to publish CAP compatibility warning: {error}");
+                                    }
+                                }
+                                Ok(report) if report.compatible => {
+                                    let nodes: Api<StellarNode> = if let Some(ns) = &ctx.watch_namespace {
+                                        Api::namespaced(client.clone(), ns)
+                                    } else {
+                                        Api::all(client.clone())
+                                    };
+                                    if let Err(error) = nodes
+                                        .patch(
+                                            &name,
+                                            &PatchParams::default(),
+                                            &Patch::Merge(&serde_json::json!({
+                                                "metadata": {
+                                                    "annotations": {
+                                                        "stellar.org/protocol-compatibility-warning": null
+                                                    }
+                                                }
+                                            })),
+                                        )
+                                        .await
+                                    {
+                                        warn!("Failed to clear protocol compatibility warning: {error}");
+                                    }
+                                }
+                                Err(error) => {
+                                    compatibility_blocked = true;
+                                    warn!("Could not evaluate protocol compatibility: {error}");
+                                }
+                                _ => {}
                             }
-                            Ok(None) => {
-                                debug!("No GitOps upgrade step due for {}/{}", namespace, name);
-                            }
-                            Err(e) => {
-                                warn!(
-                                    "GitOps upgrade planning failed for {}/{}: {}",
-                                    namespace, name, e
-                                );
+                        }
+                        if compatibility_blocked {
+                            debug!("Skipping GitOps upgrade for {}/{} until CAP compatibility is restored", namespace, name);
+                        } else {
+                            let now_unix = chrono::Utc::now().timestamp();
+                            match controller
+                                .plan_and_sync(&client, &node, &timeline, current_protocol, now_unix)
+                                .await
+                            {
+                                Ok(Some(plan)) => {
+                                    info!(
+                                        "GitOps upgrade planned for {}/{}: protocol v{} via {}",
+                                        namespace, name, plan.target_protocol, engine_str
+                                    );
+                                }
+                                Ok(None) => {
+                                    debug!("No GitOps upgrade step due for {}/{}", namespace, name);
+                                }
+                                Err(e) => {
+                                    warn!(
+                                        "GitOps upgrade planning failed for {}/{}: {}",
+                                        namespace, name, e
+                                    );
+                                }
                             }
                         }
                     }

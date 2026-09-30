@@ -8,6 +8,8 @@ pub mod canary;
 pub mod cross_cloud_failover;
 pub mod event_taxonomy;
 pub mod feature_flags;
+#[cfg(feature = "metrics")]
+pub mod fee_market;
 pub mod gas_autoscaling;
 pub mod gitops_upgrade;
 pub mod horizon_cache;

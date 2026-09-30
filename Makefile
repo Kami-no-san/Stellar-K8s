@@ -363,6 +363,7 @@ docs-serve: ## Serve the documentation site locally (http://127.0.0.1:8000)
 
 install-crd: ## Install CRDs
 	$(KUBECTL) apply -f config/crd/stellarnode-crd.yaml
+	$(KUBECTL) apply -f config/crd/contractdeployment-crd.yaml
 
 apply-samples: install-crd ## Apply samples
 	$(KUBECTL) apply -f config/samples/
@@ -371,6 +372,7 @@ crd-gen: ## Generate CRDs
 	@echo "→ Generating CRDs..."
 	@$(CARGO) run --bin crdgen > config/crd/stellarnode-crd.yaml
 	@$(CARGO) run --bin crdgen | python3 scripts/sort-manifests.py > config/crd/stellarnode-crd.yaml
+	@$(CARGO) run --bin contract-crdgen | python3 scripts/sort-manifests.py > config/crd/contractdeployment-crd.yaml
 	@echo "✓ CRD written to config/crd/stellarnode-crd.yaml (deterministic order)"
 
 regenerate: crd-gen generate-api-docs bundle ## Regenerate all derived artifacts (CRDs, API docs, OLM bundle)

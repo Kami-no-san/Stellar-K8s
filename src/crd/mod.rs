@@ -64,6 +64,7 @@ mod blue_green_schema_test;
 #[cfg(test)]
 mod secret_rotation_schema_test;
 pub mod capacity_forecast;
+pub mod contract_deployment;
 mod cnpg;
 pub mod control_plane_health;
 pub mod dr_policy;
@@ -124,6 +125,10 @@ pub use capacity_forecast::{
     CapacityRecommendationReportSpec, CapacityRecommendationReportStatus, ForecastInterval,
     ForecastModelKind, IncidentBacktest, RecommendationPhase, RecommendationPriority,
     ScalingRecommendation, SeriesBacktest, TimeToExhaustion,
+};
+pub use contract_deployment::{
+    ContractDeploymentPhase, ContractInstance, ContractInstanceSpec, ContractInstanceStatus,
+    ContractStorageEntry, ContractWASM, ContractWASMSpec, ContractWASMStatus, StorageDurability,
 };
 pub use cnpg::*;
 pub use control_plane_health::{
