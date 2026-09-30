@@ -21,7 +21,7 @@
 
 .PHONY: help \
 	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-report \
-	build test chaos-test ci-local quick watch \
+	build test chaos-test chaos-drill chaos-report ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks health-check pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
@@ -241,6 +241,14 @@ benchmark-soroban-cache: ## Run the 10k-read Soroban cache benchmark against a r
 chaos-test: ## Run the chaos engineering resilience suite (needs kind + Chaos Mesh)
 	@echo "→ Running chaos engineering test suite..."
 	@bash tests/chaos/run-chaos-tests.sh
+
+chaos-drill: ## Run a chaos drill against a live cluster (scripts/run-chaos-drill.sh)
+	@echo "→ Running chaos drill..."
+	@bash scripts/run-chaos-drill.sh
+
+chaos-report: ## Aggregate chaos drill results into a summary report (scripts/aggregate-chaos-results.sh)
+	@echo "→ Aggregating chaos drill results..."
+	@bash scripts/aggregate-chaos-results.sh
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 
