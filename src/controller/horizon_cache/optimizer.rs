@@ -14,7 +14,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::cache::{CacheLayer, HorizonCache, HorizonCacheConfig};
+use super::cache::{CacheLayer, HorizonCache};
 
 /// Horizon query type classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,6 +157,7 @@ impl QueryOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::controller::horizon_cache::cache::HorizonCacheConfig;
 
     #[test]
     fn classify_account_query() {

@@ -20,7 +20,7 @@ use crate::data_pipeline::{
 };
 use std::sync::Arc;
 use tokio::sync::watch;
-use tracing::info;
+use tracing::{error, info};
 
 /// Handle returned by [`DataPipeline::start`] for monitoring and shutdown.
 pub struct PipelineHandle {
@@ -75,11 +75,11 @@ impl DataPipeline {
 }
 
 async fn run_pipeline(
-    _config: Arc<PipelineConfig>,
-    _sinks: Arc<Vec<Box<dyn Sink>>>,
-    _metrics: PipelineMetrics,
-    _lineage: LineageTracker,
-    mut shutdown_rx: watch::Receiver<bool>,
+    config: Arc<PipelineConfig>,
+    sinks: Arc<Vec<Box<dyn Sink>>>,
+    metrics: PipelineMetrics,
+    lineage: LineageTracker,
+    shutdown_rx: watch::Receiver<bool>,
 ) {
     #[cfg(feature = "kafka")]
     {
@@ -87,6 +87,8 @@ async fn run_pipeline(
     }
     #[cfg(not(feature = "kafka"))]
     {
+        let mut shutdown_rx = shutdown_rx;
+        let _ = (config, sinks, metrics, lineage);
         info!("data pipeline started in no-op mode (kafka feature not enabled)");
         let _ = shutdown_rx.changed().await;
         info!("data pipeline stopped");
@@ -103,9 +105,14 @@ async fn run_kafka_pipeline(
 ) {
     use rdkafka::consumer::{Consumer, StreamConsumer};
     use rdkafka::message::Message as KafkaMessage;
-    use rdkafka::producer::{FutureProducer, FutureRecord};
+    use rdkafka::producer::FutureProducer;
     use rdkafka::ClientConfig;
-    use std::time::Duration;
+
+    use std::time::Instant;
+
+    use crate::data_pipeline::etl::EtlTransformer;
+    use crate::data_pipeline::lineage::LineageStatus;
+    use tracing::warn;
 
     let mut client_config = ClientConfig::new();
     client_config

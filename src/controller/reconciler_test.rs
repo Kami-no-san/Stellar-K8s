@@ -12,8 +12,8 @@ mod tests {
     use super::super::reconciler::*;
     use crate::controller::{AuditLog, JobRegistry};
     use crate::crd::{
-        BackupConfig, CaptiveCoreConfig, Condition, HorizonConfig, ManagedDatabaseConfig,
-        NodeType, ResourceRequirements, ResourceSpec, SorobanConfig, StellarNetwork, StellarNode,
+        BackupConfig, CaptiveCoreConfig, Condition, HorizonConfig, ManagedDatabaseConfig, NodeType,
+        ResourceRequirements, ResourceSpec, SorobanConfig, StellarNetwork, StellarNode,
         StellarNodeSpec, StorageConfig, ValidatorConfig,
     };
     use crate::error::Error;

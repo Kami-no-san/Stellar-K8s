@@ -14,6 +14,7 @@
 
 use crate::data_pipeline::{config::SinksConfig, etl::EtlRecord};
 use async_trait::async_trait;
+use aws_config::BehaviorVersion;
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -182,7 +183,7 @@ impl S3Sink {
         region: &str,
         batch_size: usize,
     ) -> Self {
-        let config = aws_config::from_env()
+        let config = aws_config::defaults(BehaviorVersion::latest())
             .region(aws_config::meta::region::RegionProviderChain::first_try(
                 aws_sdk_s3::config::Region::new(region.to_string()),
             ))

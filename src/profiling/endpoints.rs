@@ -221,7 +221,7 @@ impl ProfilingEndpoints {
                 },
             })
             .collect();
-        frames.sort_by(|a, b| b.samples.cmp(&a.samples));
+        frames.sort_by_key(|f| std::cmp::Reverse(f.samples));
         frames.truncate(5);
 
         Ok(CpuProfileResponse {
@@ -255,7 +255,7 @@ impl ProfilingEndpoints {
                 },
             })
             .collect();
-        allocs.sort_by(|a, b| b.bytes.cmp(&a.bytes));
+        allocs.sort_by_key(|a| std::cmp::Reverse(a.bytes));
         allocs.truncate(5);
 
         Ok(HeapProfileResponse {

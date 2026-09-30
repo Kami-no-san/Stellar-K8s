@@ -533,7 +533,6 @@ async fn acquire_blue_green_lease(
                         acquire_time: Some(MicroTime(Utc::now())),
                         renew_time: Some(MicroTime(Utc::now())),
                         lease_transitions: Some(transitions),
-                        ..Default::default()
                     });
                     match api.replace(&lease_name, &Default::default(), &lease).await {
                         Ok(_) => return Ok(()),
@@ -560,7 +559,6 @@ async fn acquire_blue_green_lease(
                         acquire_time: Some(MicroTime(Utc::now())),
                         renew_time: Some(MicroTime(Utc::now())),
                         lease_transitions: Some(0),
-                        ..Default::default()
                     }),
                 };
                 api.create(&Default::default(), &lease).await?;

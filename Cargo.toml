@@ -152,6 +152,8 @@ aws-config = "1.8.16"
 serde_json_diff = "0.2.0"
 json-patch = "4.1.0"
 md5 = "0.8.0"
+printpdf = "0.7"
+nix = { version = "0.29", default-features = false, features = ["signal"] }
 # tar archive extraction for snapshot bootstrapping (#119)
 tar = "0.4"
 
@@ -229,3 +231,15 @@ required-features = ["rest-api", "metrics"]
 
 [workspace]
 members = ["wasm-plugins"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(feature, values("profiling"))'] }
+# Legacy modules retain unreferenced helpers kept for API completeness.
+dead_code = "allow"
+
+[lints.clippy]
+# Blue/green reconcile orchestration legitimately threads many parameters.
+too_many_arguments = "allow"
+# axum handler signatures return a large Result Err variant by design.
+result_large_err = "allow"
+redundant_closure_for_method_calls = "allow"

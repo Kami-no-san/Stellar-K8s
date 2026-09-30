@@ -13,12 +13,16 @@
 //! Correlation ID middleware — propagated across service boundaries
 //!
 //! Every inbound request gets a correlation ID:
+//!
 //! - If client supplied `X-Correlation-ID` or `X-Request-ID`, reuse it
 //! - Otherwise generate a `req-` prefixed ULID-like ID
+//!
 //! The ID is:
+//!
 //! - Stored in `request.extensions()` as `CorrelationId`
 //! - Added to response headers `X-Correlation-ID`
 //! - Injected into the current tracing span as `correlation_id` (see `logging::fields`)
+//!
 //! Downstream HTTP calls MUST forward this header for end-to-end tracing.
 
 use axum::{
@@ -67,23 +71,24 @@ pub fn extract_or_generate(req: &Request<Body>) -> String {
     generate_id()
 }
 
-pub async fn correlation_middleware(mut req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
+pub async fn correlation_middleware(
+    mut req: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let cid = extract_or_generate(&req);
     // Store for handlers
     req.extensions_mut().insert(CorrelationId(cid.clone()));
     // Run handler with tracing span enriched
     let span = tracing::Span::current();
-    span.record("correlation_id", &cid.as_str());
+    span.record("correlation_id", cid.as_str());
     // Use fields constant for consistency
     tracing::trace!(correlation_id = %cid, "incoming request");
 
     let mut res = next.run(req).await;
     // Echo correlation ID in response
     if let Ok(val) = HeaderValue::from_str(&cid) {
-        res.headers_mut().insert(
-            HeaderName::from_static("x-correlation-id"),
-            val,
-        );
+        res.headers_mut()
+            .insert(HeaderName::from_static("x-correlation-id"), val);
     }
     // Structured logging: include correlation_id in JSON logs via tracing field
     Ok(res)

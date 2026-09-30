@@ -90,6 +90,8 @@ pub enum JobKind {
     CrossClusterCheck,
     /// Webhook delivery retry.
     WebhookDelivery,
+    /// Leader-election maintenance.
+    LeaderElection,
 
     /// Any other job not covered above.
     Other(String),
@@ -319,6 +321,7 @@ impl JobRegistry {
                         JobKind::BlueGreenRollout => "blue_green_rollout",
                         JobKind::CrossClusterCheck => "cross_cluster_check",
                         JobKind::WebhookDelivery => "webhook_delivery",
+                        JobKind::LeaderElection => "leader_election",
 
                         JobKind::Other(s) => s.as_str(),
                     };

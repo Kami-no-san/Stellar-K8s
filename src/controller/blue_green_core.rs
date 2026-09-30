@@ -888,7 +888,7 @@ pub fn build_colored_statefulset_for_test(
     publish_rollout: Option<&str>,
 ) -> StatefulSet {
     let labels = color_labels(node, color, role);
-    let mut sts = build_statefulset(node, false, None);
+    let mut sts = build_statefulset(node, false, None, node.spec.pod_anti_affinity.clone());
     set_sts_identity(
         &mut sts,
         sts_name,
@@ -929,7 +929,12 @@ async fn ensure_colored_statefulset(
     let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
     let api: Api<StatefulSet> = Api::namespaced(client.clone(), &namespace);
     let labels = color_labels(node, color, role);
-    let mut sts = build_statefulset(node, enable_mtls, seed_injection);
+    let mut sts = build_statefulset(
+        node,
+        enable_mtls,
+        seed_injection,
+        node.spec.pod_anti_affinity.clone(),
+    );
     set_sts_identity(
         &mut sts,
         sts_name,
@@ -1352,14 +1357,14 @@ pub async fn reconcile_validator_blue_green(
         .or_else(|| annotation(node, ANN_BLUE_VERSION));
 
     // Green already active: further upgrades are deferred (no flip-flop / no PVC delete).
-    if matches!(
+    let green_already_active = matches!(
         phase,
         CoreBlueGreenPhase::GreenActive
             | CoreBlueGreenPhase::UpgradeDeferred
             | CoreBlueGreenPhase::RollingBack
-    ) || active_color == COLOR_GREEN
-    {
-        if phase != CoreBlueGreenPhase::RollingBack {
+    ) || active_color == COLOR_GREEN;
+    if green_already_active && phase != CoreBlueGreenPhase::RollingBack {
+        {
             let green_ver = sts_image_version(client, &namespace, &green_sts_name(node)).await?;
             if green_ver.is_some() && green_ver.as_ref() != Some(&desired_version) {
                 patch_node_progress(
@@ -1416,9 +1421,6 @@ pub async fn reconcile_validator_blue_green(
                     None,
                 )
                 .await?;
-                return Ok(());
-            }
-            if phase == CoreBlueGreenPhase::UpgradeDeferred {
                 return Ok(());
             }
             // Matched desired version (or unknown): maintain green below.
@@ -2369,7 +2371,7 @@ mod tests {
         assert_eq!(s4, CutoverStep::WaitGreenHealthy);
 
         // Healthy but - Service switch only when eligible
-        let (s5, c5) = plan_cutover_advance(CutoverStep::WaitGreenHealthy, true, false);
+        let (_s5, c5) = plan_cutover_advance(CutoverStep::WaitGreenHealthy, true, false);
         assert_eq!(c5, CutoverCommand::Wait);
         let (s6, c6) = plan_cutover_advance(CutoverStep::WaitGreenHealthy, true, true);
         assert_eq!(c6, CutoverCommand::SwitchServiceToGreenAndFinish);
@@ -2393,7 +2395,7 @@ mod tests {
         assert_eq!(c2, RollbackCommand::ScaleBlueToOne);
         assert_eq!(s2, RollbackStep::WaitBlueHealthy);
 
-        let (s3, c3) = plan_rollback_advance(RollbackStep::WaitBlueHealthy, false);
+        let (_s3, c3) = plan_rollback_advance(RollbackStep::WaitBlueHealthy, false);
         assert_eq!(c3, RollbackCommand::Wait);
 
         let (s4, c4) = plan_rollback_advance(RollbackStep::WaitBlueHealthy, true);

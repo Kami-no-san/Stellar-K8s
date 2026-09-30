@@ -4,14 +4,14 @@
 //! embedded in Soroban RPC instances.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+
+use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::{Duration, SystemTime};
-use std::os::unix::fs::MetadataExt;
 
 use tokio::process::Command;
 use tokio::time::sleep;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::error::{Error, Result};
 
@@ -93,7 +93,7 @@ impl CaptiveCoreProcess {
         match fs::metadata(&self.lock_path) {
             Ok(metadata) => {
                 let modified = metadata.modified().map_err(|e| {
-                    Error::Other(format!("Failed to read lock file metadata: {}", e))
+                    Error::InternalError(format!("Failed to read lock file metadata: {}", e))
                 })?;
 
                 let age = SystemTime::now()
@@ -108,14 +108,12 @@ impl CaptiveCoreProcess {
                     pid,
                 })
             }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                Ok(LockFileInfo {
-                    exists: false,
-                    age: None,
-                    pid: None,
-                })
-            }
-            Err(e) => Err(Error::Other(format!(
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(LockFileInfo {
+                exists: false,
+                age: None,
+                pid: None,
+            }),
+            Err(e) => Err(Error::InternalError(format!(
                 "Failed to check lock file: {}",
                 e
             ))),
@@ -141,10 +139,7 @@ impl CaptiveCoreProcess {
         // If we can read the PID from lock, check if process is running
         if let Some(lock_pid) = lock_info.pid {
             if !self.process_exists(lock_pid).await {
-                debug!(
-                    "Lock file exists but process {} is not running",
-                    lock_pid
-                );
+                debug!("Lock file exists but process {} is not running", lock_pid);
                 return Ok(true);
             }
         }
@@ -152,10 +147,7 @@ impl CaptiveCoreProcess {
         // If lock file is very old (more than 1 hour), consider it stale
         if let Some(age) = lock_info.age {
             if age > Duration::from_secs(3600) {
-                warn!(
-                    "Lock file is very old ({:?}), considering it stale",
-                    age
-                );
+                warn!("Lock file is very old ({:?}), considering it stale", age);
                 return Ok(true);
             }
         }
@@ -179,7 +171,7 @@ impl CaptiveCoreProcess {
         let lock_info = self.check_lock_file().await?;
         if let Some(lock_pid) = lock_info.pid {
             if self.process_exists(lock_pid).await {
-                return Err(Error::Other(
+                return Err(Error::InternalError(
                     "Cannot remove lock file: process is still running".to_string(),
                 ));
             }
@@ -194,7 +186,7 @@ impl CaptiveCoreProcess {
                 debug!("Lock file already removed");
                 Ok(())
             }
-            Err(e) => Err(Error::Other(format!(
+            Err(e) => Err(Error::InternalError(format!(
                 "Failed to remove lock file: {}",
                 e
             ))),
@@ -245,10 +237,7 @@ impl CaptiveCoreProcess {
                 }
             }
 
-            warn!(
-                "Process {} did not terminate after {:?}",
-                pid, timeout
-            );
+            warn!("Process {} did not terminate after {:?}", pid, timeout);
             return Ok(false);
         }
 
@@ -288,9 +277,9 @@ impl CaptiveCoreProcess {
     pub async fn spawn(&mut self, args: Vec<String>) -> Result<u32> {
         if self.state == ProcessState::Running {
             debug!("Process already running");
-            return Ok(self.pid.ok_or_else(|| {
-                Error::Other("Process state is Running but no PID".to_string())
-            })?);
+            return self.pid.ok_or_else(|| {
+                Error::InternalError("Process state is Running but no PID".to_string())
+            });
         }
 
         info!(
@@ -308,7 +297,7 @@ impl CaptiveCoreProcess {
         match cmd.spawn() {
             Ok(child) => {
                 let pid = child.id().ok_or_else(|| {
-                    Error::Other("Failed to get child process ID".to_string())
+                    Error::InternalError("Failed to get child process ID".to_string())
                 })?;
 
                 self.pid = Some(pid);
@@ -318,7 +307,7 @@ impl CaptiveCoreProcess {
                 info!("Spawned Captive Core with PID {}", pid);
                 Ok(pid)
             }
-            Err(e) => Err(Error::Other(format!(
+            Err(e) => Err(Error::InternalError(format!(
                 "Failed to spawn Captive Core: {}",
                 e
             ))),

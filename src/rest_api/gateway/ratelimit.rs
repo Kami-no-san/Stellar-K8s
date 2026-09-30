@@ -379,7 +379,7 @@ impl RateLimiter {
 
         if !client.check() {
             let info = client.get_limit_info(&tier_config);
-            let headers = info.to_headers(Some(60));
+            let _headers = info.to_headers(Some(60));
             return Err(RateLimitError::RateLimitExceeded(format!(
                 "Rate limit exceeded for tier {:?}",
                 tier

@@ -198,7 +198,8 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
         tokio::spawn(
             async move {
                 let leader_flag = is_leader_bg.clone();
-                let election_task = run_leader_election(lease_client, &lease_ns, &identity, leader_flag);
+                let election_task =
+                    run_leader_election(lease_client, &lease_ns, &identity, leader_flag);
                 tokio::pin!(election_task);
                 tokio::select! {
                     _ = &mut election_task => {}

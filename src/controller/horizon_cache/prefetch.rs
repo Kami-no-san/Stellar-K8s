@@ -116,7 +116,6 @@ impl Default for PrefetchEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::controller::horizon_cache::HorizonCacheConfig;
 
     #[test]
     fn predict_related_queries() {

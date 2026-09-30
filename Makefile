@@ -36,6 +36,10 @@ lint: ## Run clippy
 		-D clippy::perf \
 		-D clippy::style
 
+lint-strict: ## Run clippy with every warning denied (CI strict mode)
+	@echo "→ Running clippy (strict)..."
+	@K8S_OPENAPI_ENABLED_VERSION=1.30 RUSTFLAGS="-D warnings" $(CARGO) clippy --workspace --all-targets --all-features
+
 audit: ## Security audit
 	@echo "→ Running security audit..."
 	@command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit

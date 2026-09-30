@@ -396,10 +396,10 @@ impl SpanProcessor for CapturingProcessor {
 }
 
 /// Install a capturing tracer provider + tracing-opentelemetry layer for tests.
-pub fn init_capturing_tracer<S>() -> (
-    Box<dyn Layer<S> + Send + Sync>,
-    std::sync::Arc<std::sync::Mutex<Vec<CapturedSpan>>>,
-)
+type CapturingLayer<S> = Box<dyn Layer<S> + Send + Sync>;
+type CapturedSpanBuffer = std::sync::Arc<std::sync::Mutex<Vec<CapturedSpan>>>;
+
+pub fn init_capturing_tracer<S>() -> (CapturingLayer<S>, CapturedSpanBuffer)
 where
     S: tracing::Subscriber + for<'a> LookupSpan<'a> + Send + Sync,
 {

@@ -447,7 +447,7 @@ mod tests {
 
         // Force visibility (set visible_after to 0 for test)
         if let Some(q) = mq.queues.get_mut("test") {
-            for entry in q.priority.iter() {
+            for _entry in q.priority.iter() {
                 // can't mutate heap directly; just verify depth
             }
         }

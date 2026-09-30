@@ -43,6 +43,7 @@ fn get_schema(schema_ref: &str) -> Value {
     let ref_path = schema_ref.trim_start_matches("#/components/schemas/");
     OPENAPI_SPEC["components"]["schemas"][ref_path]
         .clone()
+        .and_then(|v| if v.is_null() { None } else { Some(v) })
         .unwrap_or_else(|| panic!("Schema not found: {schema_ref}"))
 }
 
@@ -1029,11 +1030,27 @@ fn api_endpoint_coverage_report() {
         ("post", "/api/v1/optimization/simulate", true),
         ("get", "/api/v1/optimization/forecast", true),
         ("get", "/api/v1/traffic/dashboard", true),
-        ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/logs", true),
-        ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/conditions", true),
+        (
+            "get",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/logs",
+            true,
+        ),
+        (
+            "get",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/conditions",
+            true,
+        ),
         ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/dr", true),
-        ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/metrics", true),
-        ("post", "/api/v1/dashboard/nodes/{namespace}/{name}/actions", true),
+        (
+            "get",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/metrics",
+            true,
+        ),
+        (
+            "post",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/actions",
+            true,
+        ),
         ("get", "/api/v1/dashboard/operator/logs", true),
         ("get", "/api/v1/quorum/topology", true),
         ("get", "/api/v1/docs/search-index", false),

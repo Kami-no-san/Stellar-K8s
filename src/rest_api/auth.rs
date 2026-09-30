@@ -204,7 +204,7 @@ pub async fn api_reader(
         )
     })?;
 
-    let mut subject = "system:unknown".to_string();
+    let subject: String;
     let mut groups: Vec<String> = Vec::new();
     let mut roles: Vec<ApiRole> = Vec::new();
     let mut op_roles: Vec<OperatorRole> = Vec::new();

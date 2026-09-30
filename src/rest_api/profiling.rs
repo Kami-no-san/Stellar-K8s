@@ -584,6 +584,9 @@ mod tests {
         assert!(response.headers().get("deprecation").is_none());
     }
 
+    // The env lock intentionally spans the request await so parallel tests
+    // cannot observe the toggled PROFILING_ENABLED_ENV mid-request.
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn runtime_disabled_profiling_routes_not_registered() {
         let _guard = lock_env();
@@ -644,6 +647,9 @@ mod tests {
     }
 
     #[cfg(not(feature = "profiling"))]
+    // The env lock intentionally spans the request await so parallel tests
+    // cannot observe the toggled PROFILING_ENABLED_ENV mid-request.
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn without_profiling_feature_routes_unavailable_even_if_env_set() {
         let _guard = lock_env();

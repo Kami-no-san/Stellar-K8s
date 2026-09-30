@@ -60,7 +60,7 @@ async fn service_c() -> impl IntoResponse {
     format!("c:{trace_id}")
 }
 
-async fn service_b(State(Downstream(mut next)): State<Downstream>) -> impl IntoResponse {
+async fn service_b(State(Downstream(next)): State<Downstream>) -> impl IntoResponse {
     let (trace_id, span_id) = current_ids();
     tracing::info!(service = "b", trace_id = %trace_id, span_id = %span_id, "service B calling C");
     let mut headers = axum::http::HeaderMap::new();
@@ -78,7 +78,7 @@ async fn service_b(State(Downstream(mut next)): State<Downstream>) -> impl IntoR
     format!("b:{trace_id}|{}", String::from_utf8_lossy(&body))
 }
 
-async fn service_a(State(Downstream(mut next)): State<Downstream>) -> impl IntoResponse {
+async fn service_a(State(Downstream(next)): State<Downstream>) -> impl IntoResponse {
     let (trace_id, span_id) = current_ids();
     tracing::info!(service = "a", trace_id = %trace_id, span_id = %span_id, "service A calling B");
     let mut headers = axum::http::HeaderMap::new();
@@ -139,7 +139,7 @@ async fn trace_context_propagates_a_b_c_and_appears_in_logs() {
             .route("/b", get(service_b))
             .with_state(Downstream(svc_c)),
     );
-    let mut svc_a = traced(
+    let svc_a = traced(
         Router::new()
             .route("/a", get(service_a))
             .with_state(Downstream(svc_b)),

@@ -17,7 +17,7 @@
 /// connection pooling, and dynamic backend discovery.
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::hash::Hasher;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;

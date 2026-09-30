@@ -342,7 +342,7 @@ impl ExpiryMonitor {
         }
 
         // Sort: most urgent first.
-        alerts.sort_by(|a, b| a.days_remaining.cmp(&b.days_remaining));
+        alerts.sort_by_key(|a| a.days_remaining);
         alerts
     }
 
@@ -422,13 +422,13 @@ impl RotationAuditLog {
             .filter(|e| e.cert_name == cert_name)
             .cloned()
             .collect();
-        out.sort_by(|a, b| b.rotated_at.cmp(&a.rotated_at));
+        out.sort_by_key(|e| std::cmp::Reverse(e.rotated_at));
         out
     }
 
     pub async fn all_events(&self) -> Vec<RotationEvent> {
         let mut events = self.events.read().await.clone();
-        events.sort_by(|a, b| b.rotated_at.cmp(&a.rotated_at));
+        events.sort_by_key(|e| std::cmp::Reverse(e.rotated_at));
         events
     }
 }

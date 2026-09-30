@@ -34,13 +34,12 @@ use crate::controller::ControllerState;
 use crate::{Error, Result};
 
 use super::audit_handlers;
-use super::alert_test;
 use super::auth;
 use super::compliance_handlers;
 use super::custom_metrics;
 use super::dashboard_handlers;
 use super::handlers;
-use super::health_summary;
+
 use super::horizon_cache_handlers;
 use super::job_handlers;
 use super::profiling;
@@ -163,7 +162,6 @@ pub fn build_router(state: Arc<ControllerState>) -> Router {
         .route("/leader", get(handlers::leader_status))
         .route("/api/v1/nodes", get(handlers::list_nodes))
         .route("/api/v1/nodes/:namespace/:name", get(handlers::get_node))
-
         .route(
             "/config/log-level",
             axum::routing::post(handlers::set_log_level)
@@ -325,7 +323,9 @@ pub fn build_router(state: Arc<ControllerState>) -> Router {
     }
 
     // Correlation ID is outermost so every handler and log sees it.
-    let app = app.layer(middleware::from_fn(crate::middleware::correlation_middleware));
+    let app = app.layer(middleware::from_fn(
+        crate::middleware::correlation_middleware,
+    ));
     // Extension is outermost so version middleware can extract VersionPolicy.
     app.layer(middleware::from_fn(versioning::inject_api_version_headers))
         .layer(Extension(policy))

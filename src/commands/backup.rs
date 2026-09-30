@@ -17,7 +17,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crate::backup::providers::StorageProviderTrait;
 use crate::error::diagnostic;
 
 #[derive(Parser, Debug)]
@@ -177,7 +176,12 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
         let verify_target = if dest.is_dir() {
             // Find latest tar.gz in destination
             let mut archives: Vec<PathBuf> = fs::read_dir(&dest)
-                .map(|rd| rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().map(|e| e=="gz").unwrap_or(false)).collect())
+                .map(|rd| {
+                    rd.filter_map(|e| e.ok())
+                        .map(|e| e.path())
+                        .filter(|p| p.extension().map(|e| e == "gz").unwrap_or(false))
+                        .collect()
+                })
                 .unwrap_or_default();
             archives.sort();
             archives.last().cloned().unwrap_or(dest)

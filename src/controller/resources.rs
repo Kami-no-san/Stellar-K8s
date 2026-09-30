@@ -804,7 +804,14 @@ pub async fn ensure_statefulset(
     Ok(())
 }
 
-
+/// Build the desired StatefulSet for a Validator node.
+///
+/// `seed_injection` describes how the validator seed should be mounted into
+/// the pod — either as an env var from a Secret/ExternalSecret, or as a CSI
+/// volume mount. Pass `None` when called for non-validator nodes.
+/// `effective_anti_affinity` is the anti-affinity strength to apply, already
+/// resolved against real cluster zone topology by the caller when known.
+pub(crate) fn build_statefulset(
     node: &StellarNode,
     enable_mtls: bool,
     seed_injection: Option<&kms_secret::SeedInjectionSpec>,

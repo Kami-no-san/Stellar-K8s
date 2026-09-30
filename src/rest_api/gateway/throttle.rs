@@ -123,7 +123,7 @@ impl Default for EndpointTierTable {
             ("/metrics".to_string(), TierLimits::public()),
         ];
         // Ensure longest-prefix first.
-        entries.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        entries.sort_by_key(|e| std::cmp::Reverse(e.0.len()));
         Self {
             entries,
             default_limits: TierLimits::standard(),

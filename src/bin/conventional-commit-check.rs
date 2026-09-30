@@ -16,8 +16,8 @@
 //! This utility validates that commit messages follow the Conventional Commits spec
 //! (https://www.conventionalcommits.org/):
 //!
-//! Format: <type>[optional scope]: <description>
-//! Types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+//! Format: `&lt;type&gt;[optional scope]: &lt;description&gt;`
+//! Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
 //!
 //! Usage:
 //!   conventional-commit-check "fix(auth): prevent race condition in login"

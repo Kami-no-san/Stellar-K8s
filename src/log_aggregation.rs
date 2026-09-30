@@ -23,16 +23,16 @@ use chrono::{DateTime, Utc};
 use kube::api::ObjectMeta;
 use kube::core::DynamicObject;
 use kube::{
-    api::{Api, ListParams, PostParams},
-    Client, ResourceExt,
+    api::{Api, PostParams},
+    Client,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::info;
 
 /// Fluentbit DaemonSet configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -812,7 +812,7 @@ impl LogAlertEngine {
         events
     }
 
-    async fn evaluate_rule(&self, rule: &LogAlertRule) -> Option<AlertEvent> {
+    async fn evaluate_rule(&self, _rule: &LogAlertRule) -> Option<AlertEvent> {
         // In a real implementation, this would query the log backend (Loki, Elasticsearch, etc.)
         // For now, we return None
         None

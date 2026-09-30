@@ -313,7 +313,7 @@ impl VacuumDefrag {
                 };
                 data.insert(
                     "lock".to_string(),
-                    serde_json::to_string(&lock).map_err(|e| Error::SerializationError(e))?,
+                    serde_json::to_string(&lock).map_err(Error::SerializationError)?,
                 );
 
                 let cm = ConfigMap {
@@ -371,7 +371,7 @@ impl VacuumDefrag {
         let mut data = BTreeMap::new();
         data.insert(
             "lock".to_string(),
-            serde_json::to_string(&lock).map_err(|e| Error::SerializationError(e))?,
+            serde_json::to_string(&lock).map_err(Error::SerializationError)?,
         );
 
         let patch = Patch::Merge(json!({
@@ -854,7 +854,6 @@ pub async fn run_vacuum_controller(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::PgPool;
 
     #[test]
     fn test_vacuum_config_defaults() {
@@ -891,7 +890,7 @@ mod tests {
 
         let json = serde_json::to_string(&result).unwrap();
         let parsed: DefragResult = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.success, true);
+        assert!(parsed.success);
         assert_eq!(parsed.tables_vacuumed, 3);
         assert_eq!(parsed.duration_secs, 450);
         assert_eq!(parsed.vacuumed_tables.len(), 3);

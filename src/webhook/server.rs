@@ -1136,10 +1136,6 @@ mod tests {
                 "name": "my-validator",
                 "namespace": "default",
                 "labels": { "project-id": "stellar-test", "owner": "platform-team" }
-                "labels": {
-                    "project-id": "test",
-                    "owner": "test"
-                }
             },
             "spec": {
                 "nodeType": "Validator",
@@ -1209,10 +1205,6 @@ mod tests {
                 "name": "no-config",
                 "namespace": "default",
                 "labels": { "project-id": "stellar-test", "owner": "platform-team" }
-                "labels": {
-                    "project-id": "test",
-                    "owner": "test"
-                }
             },
             "spec": {
                 "nodeType": "Validator",
@@ -1250,10 +1242,6 @@ mod tests {
                 "name": "my-validator",
                 "namespace": "default",
                 "labels": { "project-id": "stellar-test", "owner": "platform-team" }
-                "labels": {
-                    "project-id": "test",
-                    "owner": "test"
-                }
             },
             "spec": {
                 "nodeType": "Validator",
@@ -1321,10 +1309,6 @@ mod tests {
                 "name": "test",
                 "namespace": "default",
                 "labels": { "project-id": "stellar-test", "owner": "platform-team" }
-                "labels": {
-                    "project-id": "test",
-                    "owner": "test"
-                }
             },
             "spec": {
                 "nodeType": "Validator",
@@ -1405,10 +1389,6 @@ mod tests {
                 "name": "test",
                 "namespace": "default",
                 "labels": { "project-id": "stellar-test", "owner": "platform-team" }
-                "labels": {
-                    "project-id": "test",
-                    "owner": "test"
-                }
             },
             "spec": {
                 "nodeType": "Validator",

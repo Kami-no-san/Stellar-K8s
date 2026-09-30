@@ -290,7 +290,7 @@ impl Pruner {
                 };
                 data.insert(
                     "lock".to_string(),
-                    serde_json::to_string(&lock).map_err(|e| Error::SerializationError(e))?,
+                    serde_json::to_string(&lock).map_err(Error::SerializationError)?,
                 );
 
                 let cm = ConfigMap {
@@ -348,7 +348,7 @@ impl Pruner {
         let mut data = BTreeMap::new();
         data.insert(
             "lock".to_string(),
-            serde_json::to_string(&lock).map_err(|e| Error::SerializationError(e))?,
+            serde_json::to_string(&lock).map_err(Error::SerializationError)?,
         );
 
         let patch = Patch::Merge(json!({

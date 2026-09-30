@@ -141,7 +141,7 @@ impl ProfileReporter {
                 },
             })
             .collect();
-        top_symbols.sort_by(|a, b| b.total_samples.cmp(&a.total_samples));
+        top_symbols.sort_by_key(|s| std::cmp::Reverse(s.total_samples));
         top_symbols.truncate(10);
 
         // Warn if a single symbol dominates >50 % of samples
