@@ -1,4 +1,4 @@
-// Copyright 2024 Stellar-K8s Contributors
+﻿// Copyright 2024 Stellar-K8s Contributors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -61,7 +61,10 @@
 
 #[cfg(test)]
 mod blue_green_schema_test;
+#[cfg(test)]
+mod secret_rotation_schema_test;
 pub mod capacity_forecast;
+pub mod contract_deployment;
 mod cnpg;
 pub mod control_plane_health;
 pub mod dr_policy;
@@ -109,7 +112,9 @@ pub mod validator_score;
 pub mod stellar_registry;
 pub mod stellar_security;
 
-// Issue #1577 — Webhook Event Delivery for Ledger Close Notifications
+pub mod namespace_teardown;
+
+// Issue #1577 â€” Webhook Event Delivery for Ledger Close Notifications
 pub mod ledger_close_webhook;
 
 #[cfg(test)]
@@ -120,6 +125,10 @@ pub use capacity_forecast::{
     CapacityRecommendationReportSpec, CapacityRecommendationReportStatus, ForecastInterval,
     ForecastModelKind, IncidentBacktest, RecommendationPhase, RecommendationPriority,
     ScalingRecommendation, SeriesBacktest, TimeToExhaustion,
+};
+pub use contract_deployment::{
+    ContractDeploymentPhase, ContractInstance, ContractInstanceSpec, ContractInstanceStatus,
+    ContractStorageEntry, ContractWASM, ContractWASMSpec, ContractWASMStatus, StorageDurability,
 };
 pub use cnpg::*;
 pub use control_plane_health::{
@@ -262,7 +271,9 @@ pub use stellar_security::{
     StellarSecurityPolicySpec, StellarSecurityPolicyStatus,
 };
 
-// Issue #1577 — Ledger-Close Webhook CRD exports
+pub mod namespace_teardown;
+
+// Issue #1577 â€” Ledger-Close Webhook CRD exports
 pub use ledger_close_webhook::{
     DeliveryLogEntry, DeliveryPhase, LedgerCloseEventType, LedgerClosePayload,
     LedgerCloseWebhook, LedgerCloseWebhookSpec, LedgerCloseWebhookStatus,
@@ -277,6 +288,10 @@ pub use incident::{
     IncidentSeverity as NetworkIncidentSeverity, IncidentSpec, IncidentStatus as NetworkIncidentStatus,
     IncidentTimelineEntry, IncidentType, PartitionDetails, QuorumAdjustmentRecommendation,
 };
+pub use namespace_teardown::{
+    ArchiveSpec, NamespaceTeardown, NamespaceTeardownSpec, NamespaceTeardownStatus,
+    TeardownCondition, TeardownPhase, TeardownStepStatus,
+};
 pub use multisig_operation::{
     AdminOperationType, CollectedSignature, MultiSigAuditEntry, MultiSigCondition,
     MultiSigOperation, MultiSigOperationSpec, MultiSigOperationStatus, MultiSigPhase,
@@ -287,4 +302,6 @@ pub use validator_score::{
     ValidatorLeaderboard, ValidatorLeaderboardSpec, ValidatorLeaderboardStatus, ValidatorScore,
     ValidatorScoreSpec, ValidatorScoreStatus,
 };
+
+
 

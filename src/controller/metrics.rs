@@ -91,11 +91,15 @@ pub static HORIZON_QUEUE_LENGTH: Lazy<Family<NodeLabels, Gauge<i64, AtomicI64>>>
 pub static ACTIVE_CONNECTIONS: Lazy<Family<NodeLabels, Gauge<i64, AtomicI64>>> =
     Lazy::new(Family::default);
 
-/// Gauge tracking the ratio (0.0-1.0) of Horizon API requests that returned a 4xx/5xx status
+/// Gauge tracking pending Soroban RPC requests per node.
+pub static PENDING_RPC_QUEUE: Lazy<Family<NodeLabels, Gauge<i64, AtomicI64>>> =
+    Lazy::new(Family::default);
+
+/// Gauge tracking Horizon API request error ratio per node
 pub static HORIZON_REQUEST_ERROR_RATIO: Lazy<Family<NodeLabels, Gauge<f64, AtomicU64>>> =
     Lazy::new(Family::default);
 
-/// Gauge tracking average Horizon database query duration in seconds
+/// Gauge tracking average Horizon database query duration in seconds per node
 pub static HORIZON_DB_QUERY_DURATION_SECONDS: Lazy<Family<NodeLabels, Gauge<f64, AtomicU64>>> =
     Lazy::new(Family::default);
 
@@ -424,6 +428,23 @@ pub static TRAFFIC_SYSTEM_LOAD_PERCENT: Lazy<Family<TrafficNodeLabels, Gauge<i64
 pub static TRAFFIC_CIRCUIT_BREAKER_STATE: Lazy<Family<TrafficNodeLabels, Gauge<i64, AtomicI64>>> =
     Lazy::new(Family::default);
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct FeeMarketLabels {
+    pub network: String,
+    pub fee_type: String,
+}
+
+pub static FEE_MARKET_P95_STROOPS: Lazy<Family<FeeMarketLabels, Gauge<i64, AtomicI64>>> =
+    Lazy::new(Family::default);
+pub static FEE_MARKET_SPIKE_THRESHOLD_STROOPS: Lazy<Family<FeeMarketLabels, Gauge<i64, AtomicI64>>> =
+    Lazy::new(Family::default);
+pub static FEE_MARKET_BURN_STROOPS_TOTAL: Lazy<Family<FeeMarketLabels, Counter<u64, AtomicU64>>> =
+    Lazy::new(Family::default);
+pub static FEE_MARKET_INCLUSION_RATE: Lazy<Family<FeeMarketLabels, Gauge<f64, AtomicU64>>> =
+    Lazy::new(Family::default);
+pub static FEE_MARKET_LEDGER: Lazy<Family<FeeMarketLabels, Gauge<i64, AtomicI64>>> =
+    Lazy::new(Family::default);
+
 /// Labels for control-plane degradation metrics (#1494).
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct ControlPlaneComponentLabels {
@@ -513,8 +534,13 @@ pub static REGISTRY: Lazy<Registry> = Lazy::new(|| {
         ACTIVE_CONNECTIONS.clone(),
     );
     registry.register(
+        "stellar_node_pending_rpc_queue",
+        "Pending Soroban RPC request queue length",
+        PENDING_RPC_QUEUE.clone(),
+    );
+    registry.register(
         "stellar_horizon_request_error_ratio",
-        "Ratio (0.0-1.0) of Horizon API requests that returned a 4xx/5xx status",
+        "Ratio of Horizon API requests returning 4xx/5xx",
         HORIZON_REQUEST_ERROR_RATIO.clone(),
     );
     registry.register(
@@ -674,6 +700,32 @@ pub static REGISTRY: Lazy<Registry> = Lazy::new(|| {
         "stellar_traffic_shift_rto_seconds",
         "Measured recovery time of the last completed traffic shift, in seconds",
         TRAFFIC_SHIFT_RTO_SECONDS.clone(),
+    );
+
+    registry.register(
+        "stellar_fee_market_p95_stroops",
+        "95th percentile transaction inclusion fee in stroops by network and transaction class",
+        FEE_MARKET_P95_STROOPS.clone(),
+    );
+    registry.register(
+        "stellar_fee_market_spike_threshold_stroops",
+        "Configured fee spike threshold in stroops",
+        FEE_MARKET_SPIKE_THRESHOLD_STROOPS.clone(),
+    );
+    registry.register(
+        "stellar_fee_market_burn_stroops_total",
+        "Cumulative transaction fees burned in stroops by network and transaction class",
+        FEE_MARKET_BURN_STROOPS_TOTAL.clone(),
+    );
+    registry.register(
+        "stellar_fee_market_inclusion_rate",
+        "Fraction of submitted transactions included in the observed ledger",
+        FEE_MARKET_INCLUSION_RATE.clone(),
+    );
+    registry.register(
+        "stellar_fee_market_ledger",
+        "Latest ledger sequence observed by the fee market collector",
+        FEE_MARKET_LEDGER.clone(),
     );
 
     // Register PVC disk scaling metrics

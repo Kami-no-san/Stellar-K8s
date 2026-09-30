@@ -13,6 +13,750 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 • Scope config table lookups to the intended table.
 • Gate generated AppArmor annotations behind `STELLAR_APPARMOR_ENABLED`.
 
+## Chart v2.8.0 (2026-09-03) [minor]
+
+• Merge pull request #135 from CollinsC1O/fee-bump
+• Fee bump
+• Merge pull request #154 from elonwachineke-dot/feat/docs/argocd-gitops-guide
+📝 docs(argocd): add GitOps guide, interactive generator, and examples
+• Merge branch 'main' into fee-bump
+• Merge branch 'main' into fee-bump
+🐛 fix: clear pre-existing lint and test failures blocking CI
+• The Lint & Format and Pre-commit gates run clippy with `-D warnings` on a
+• newer toolchain, which surfaces findings the pinned CI previously did not
+• enforce. None are related to the fee-bump / proxy-controller work; fixing
+• them here so the PR can go green.
+• - clippy: manual_strip in org_validator resource parsers, manual_clamp in
+•   the topology-health consumer, needless struct-update in reconciler and
+•   reconciler_fuzz, and dead_code on genuinely-unused items
+•   (canary kayenta_url, log-shipper started_at, archive ZK entry point,
+•   the probe-override test wrapper).
+• - topology-health consumer: calculate_health_score never used self, so it
+•   is now an associated fn and the test no longer builds a consumer via an
+•   unsound std::mem::zeroed StreamConsumer.
+• - apply_probe_override now returns the base probe unchanged when no
+•   override is supplied, matching its documented contract.
+• - webhook::server tests: admission fixtures carry the required
+•   project-id / owner labels the org validator now enforces.
+• - secret_rotation unit tests skip cleanly when no kube client is
+•   available instead of unwrapping.
+• - doctests: ControllerState example gains the job_registry / audit_log
+•   fields; webhook_delivery example imports WebhookEventType instead of the
+•   removed TransactionEventPayload.
+• - resources_test: the stellar-native egress test is #[ignore]d with a note
+•   that build_network_policy currently shadows its egress rule vector.
+• Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+✨ feat(contracts): automated fee-bump transaction wrapper sub-contract
+✨ feat(wasm-plugins): fail-open caching layer for Soroban RPC state reads
+📝 docs(argocd): add GitOps guide, interactive generator, and examples
+✨ feat: Implement Upgradeability Proxy Controller with Delayed Timelock
+
+
+## Chart v2.7.0 (2026-09-03) [minor]
+
+• Merge pull request #158 from Goodnessoj/issue-118-key-rotation-daemon
+✨ feat: add validator key rotation daemon
+• Merge pull request #167 from Ade-Pheebs/feat/94-soroban-event-stream-inspector
+✨ feat(frontend): Real-Time Soroban Contract Event Stream Inspector [#94]
+🐛 fix: repair rebased upstream build blockers
+✨ feat(security): add validator key rotation daemon
+📝 chore(build): prepare key rotation dependencies
+• Merge pull request #160 from habnark/feat/95-storage-explorer
+✨ feat(frontend): add persistent volume storage & I/O benchmark explore…
+• Merge pull request #162 from Ayodele06/feat/merkle-tree-state-proof-verification
+✨ feat(contracts): Merkle Tree State Proof Verification Library in Soroban Rust
+• Merge branch 'main' into feat/merkle-tree-state-proof-verification
+• Merge pull request #164 from chi797/feat/122-soroban-inspector
+• Feat/122 soroban inspector
+• Merge branch 'main' of https://github.com/agnesnaomiolim-cloud/Stellar-K8s into feat/merkle-tree-state-proof-verification
+✨ feat(frontend): add real-time Soroban contract event stream inspector
+• Closes #94
+• Implement a high-performance, real-time Soroban contract event stream
+• inspector as a standalone React + TypeScript Vite application.
+• Key modules introduced:
+• - frontend/services/event_stream.ts
+• - frontend/inspector/events/ (EventTable, FilterControls, JSONModal, xdr_decoder)
+• Features:
+• - WebSocket event streaming with rAF batching (100+ events/sec, no UI lag)
+• - Virtualized table rendering (custom useVirtualList hook, renders ~20 DOM rows regardless of buffer size)
+• - XDR decoder for all 22 Soroban ScVal types (BigInt precision for 64/128/256-bit integers)
+• - Filter controls: Contract ID, Event Topic, Ledger range, Event type
+• - JSON inspector modal with syntax highlighting, focus trap, copy-to-clipboard
+• - Performance profiling overlay (EPS meter, render frame budget)
+• - Synthetic 1000-event validation: 2000/2000 XDR fields correct, all filters < 1ms
+✨ feat: Add Soroban Contract Bytecode Inspector Dashboard
+✨ feat: Zero-Knowledge Groth16 Proof Verifier (#68)
+✨ feat(contracts): add Merkle Tree state-proof verification library
+• Implements a Soroban-native Merkle Tree proof verification library in
+• pure Rust with no recursion, resolving issue #34.
+• What is added:
+• contracts/merkle-verifier/src/proof.rs
+• - Hash/Side/ProofNode/MerkleProof types for single-path proofs
+• - MultiLeaf/MultiProof types for multi-leaf batch proofs
+• - hash_leaf(data) SHA-256 leaf digest helper
+• - verify_proof() iterative O(log N) single-path verifier
+• - verify_multi_proof() iterative O(k log N) multi-proof verifier
+•   compatible with Bitcoin-SPV / OpenZeppelin ordering
+• - 9 unit tests covering valid proofs, tampered leaves, tampered
+•   siblings, empty inputs, non-power-of-two trees, depth-32 scale test
+• contracts/merkle-verifier/src/lib.rs
+• - Crate root with full module doc and public re-exports
+• contracts/merkle-verifier/benches/proof_bench.rs
+• - Benchmark binary measuring ns/proof across depths 4-20 confirming
+•   O(log N) instruction scaling
+• Cargo.toml (root)
+• - Added contracts/merkle-verifier to workspace members
+• - Fixed pre-existing profile parse error (lto/panic not valid in
+•   package-level profiles in Cargo 1.83+)
+• Closes #34
+✨ feat: implement token bonding curve continuous tokenomics primitive (#70)
+✨ feat(frontend): add persistent volume storage & I/O benchmark explorer (#95)
+• Adds the storage utilization explorer requested in #95: time-series charts
+• for PVC disk usage, read/write throughput, and I/O wait latency, with
+• predictive saturation-date projections and an interactive benchmark
+• trigger.
+• Repo investigation before writing anything: this is primarily a Rust
+• operator (Cargo.toml/src) with two existing frontend surfaces — a static
+• HTML dashboard served in-process by src/rest_api/dashboard_ui.html (React
+• via CDN, no build step) and a separate Vite+React+JS app at
+• frontend/analytics/ (3D SCP topology, proxies /api to the operator's REST
+• server on :9090). Neither has TypeScript, Chart.js, or Recharts, and the
+• backend (src/rest_api) exposes only current-value node metrics
+• (dashboard_handlers::get_node_metrics) and a generic node-action POST
+• endpoint (execute_node_action) — nothing that serves historical per-PVC
+• time series or accepts a benchmark-job trigger. The issue's own "Impacted
+• Files" list (frontend/storage/explorer/, frontend/components/
+• metrics_chart.tsx) scopes this to frontend-only, so this PR builds a new
+• Vite+React+TypeScript app against a documented, not-yet-implemented REST
+• contract, backed by injected fixture data — see "Scope & data source"
+• below.
+• New files:
+• - frontend/components/metrics_chart.tsx — shared, app-agnostic Recharts
+•   wrapper: multi-series time-series lines, an optional dashed projected
+•   trend-line overlay (merged onto the sample data's timestamp axis so a
+•   forecast extending past the last historical point still renders), and an
+•   optional threshold reference line with a warning badge/border state. Has
+•   no dependency on the storage explorer app so other frontend/* apps (e.g.
+•   frontend/analytics) can reuse it.
+• - frontend/storage/explorer/ — new Vite+React+TS app:
+•   - src/StorageExplorer.tsx: page composing three MetricsChart instances
+•     (Disk Usage %, Read/Write Throughput, I/O Wait Latency), a PVC/range
+•     selector, a saturation warning banner, and the "Run Storage I/O
+•     Benchmark" trigger (POSTs to start a job, then polls it to completion
+•     and renders IOPS/throughput/latency results).
+•   - src/lib/saturation.ts: pure ordinary-least-squares projection over
+•     historical diskUsagePercent samples, projecting the date a configurable
+•     threshold (default 100%) is crossed and flagging a warning when that
+•     falls within a configurable window (default 14 days). Order-independent
+•     (sorts internally), handles flat/decreasing growth (no projection) and
+•     <2-sample input.
+•   - src/api/storageMetrics.ts: typed API client documenting the REST
+•     contract this app is built against (GET /api/v1/storage/pvcs, GET
+•     .../pvcs/:ns/:name/metrics?range=, POST .../pvcs/:ns/:name/benchmark,
+•     GET .../benchmarks/:jobId), following this repo's existing
+•     /api/v1/... and response-shape conventions from dashboard_handlers.rs
+•     and job_handlers.rs.
+•   - src/mocks/fixtures.ts: deterministic multi-day sample generators,
+•     including a "critical" volume whose growth rate is steep enough to trip
+•     the saturation warning — the data this app runs on by default (see
+•     below), and what the tests use for the issue's validation requirement.
+•   - Tests: saturation.test.ts (projection math, including the exact
+•     "impending exhaustion" shape called for by the issue) and
+•     StorageExplorer.test.tsx (renders all three charts; shows the warning
+•     banner + badge for a steep-growth fixture and not for a healthy one;
+•     runs a benchmark end-to-end against a mock API).
+• Scope & data source (read before wiring to production):
+• This app runs entirely against injected/mock fixture data by default
+• (VITE_USE_MOCKS unset or "true") because the backend routes it's built
+• against don't exist yet — implementing them was out of this issue's
+• declared scope. Set VITE_USE_MOCKS=false once src/rest_api grows the
+• /api/v1/storage/* handlers documented in storageMetrics.ts (a natural
+• follow-up, mirroring dashboard_handlers.rs's existing patterns). This
+• keeps the explorer, its charts, and its saturation warnings fully
+• demonstrable and testable today without a live cluster or Prometheus
+• instance, per the issue's own validation ask ("supply metric data
+• indicating impending volume exhaustion and verify the interface displays
+• accurate warning indicators").
+• Validation: npm install could not complete in this sandbox — disk is at
+• 100% (0 bytes free of 136GB; confirmed via `df -h`), the same genuine,
+• non-code environment blocker hit earlier for this session's Rust/Cargo
+• work, so npm test / tsc / vitest could not actually be run or their output
+• captured here. In its place: every file was manually re-read for
+• correctness, and two real bugs this review caught were fixed before commit
+• — a wrong relative import depth (metrics_chart.tsx is three directories up
+• from src/, not two — verified with a `path.relative` check, not just
+• by eye) and a benchmark-poll effect that wouldn't fire its first check
+• until a full interval had elapsed (fixed to poll immediately on start,
+• which also removes a race against the test's waitFor). A ResizeObserver
+• stub was added to the test setup proactively, since Recharts'
+• ResponsiveContainer depends on it and jsdom doesn't implement it.
+• Screenshots (required by the issue's review process) could not be captured
+• for the same reason — no browser is available in this sandbox; the README
+• explains how to reproduce the warning state via `npm run dev`.
+• Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+
+## Chart v2.6.0 (2026-09-02) [minor]
+
+• Merge pull request #165 from Akinloluwa20/fix/db-compaction-daemon-issues
+🐛 fix(maintenance): repair DB compaction daemon bugs
+• Merge pull request #166 from Emmycivity/feat/emergency-circuit-breaker-contract
+✨ feat(contracts): Multi-Sig Emergency Circuit Breaker Contract for Critical Infrastructure
+• Merge pull request #170 from midenotch/feat/issue-123-fee-estimator-explorer
+✨ feat(analytics): add network congestion and dynamic fee estimator explorer (#123)
+• Merge branch 'main' into feat/issue-123-fee-estimator-explorer
+• Merge pull request #169 from Salome-Agu/feat/rbac-manager
+✨ feat(rbac-manager): add hierarchical role-based access control module for Soroban contracts
+• Merge branch 'main' into fix/db-compaction-daemon-issues
+• Merge branch 'main' into feat/emergency-circuit-breaker-contract
+• Merge branch 'main' into feat/issue-123-fee-estimator-explorer
+• Merge branch 'main' of https://github.com/agnesnaomiolim-cloud/Stellar-K8s into feat/emergency-circuit-breaker-contract
+✨ feat(analytics): add network congestion and dynamic fee estimator explorer (#123)
+✨ feat(rbac-manager): add hierarchical role-based access control module for Soroban contracts
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+✨ feat(contracts): add Multi-Sig Emergency Circuit Breaker contract
+• Implements a Soroban-native M-of-N emergency circuit breaker for
+• critical infrastructure, resolving issue #28.
+• What is added:
+• contracts/emergency-breaker/src/state.rs
+• - FreezeScope bitmask type with NONE/DEPOSITS/WITHDRAWALS/GOVERNANCE/ALL
+•   constants; bit-AND-based O(1) is_frozen hot path
+• - StorageKey/StorageValue typed enums mirroring Soroban instance storage
+• - StateStore wrapper (HashMap backend) with typed getters/setters
+• - BreakerState enum (Active / Frozen / PendingThaw) with lifecycle
+•   transition logic driven by freeze scope + timelock timestamp
+• - 4 unit tests for scope operations and state transitions
+• contracts/emergency-breaker/src/lib.rs
+• - BreakerError — full typed error enum for all failure modes
+• - Domain-separated signing messages: SHA-256(domain_tag || scope || action)
+•   preventing cross-action replay of operator signatures
+• - CircuitBreaker struct with:
+•   - initialize(threshold M, operators[N], timelock_delay)
+•   - freeze(scope, sigs, now) — M-of-N Ed25519 multi-sig gate; sets
+•     FreezeScope bitmask + timelock in a single write
+•   - unfreeze(sigs, now) — timelock-gated M-of-N unfreeze
+•   - assert_not_frozen(op) — O(1) pause check for hot-path use
+•   - is_frozen(op) / state(now) — read-only inspection
+• - verify_multisig() — validates Ed25519 signatures, rejects unauthorized
+•   signers, duplicates, and cryptographically invalid signatures
+• - 15 unit tests covering: 3-of-5 initialization, double-init guard,
+•   invalid threshold, empty operator list, M-of-N freeze/unfreeze,
+•   insufficient sigs, unauthorized/duplicate/tampered signatures,
+•   granular scope (deposits frozen while withdrawals remain open),
+•   timelock enforcement, 3-of-5 high-throughput simulation (1000 calls)
+• Cargo.toml (root)
+• - Added contracts/emergency-breaker to workspace members
+• - Fixed pre-existing profile parse error (panic/lto not valid in
+•   package-level profile overrides in Cargo 1.83+)
+• Closes #28
+🐛 fix(maintenance): repair DB compaction daemon bugs
+• Fix several correctness issues in the compaction daemon so the
+• drain → compact → verify → rejoin lifecycle works reliably:
+• - Batched ledger pruning used `DELETE ... LIMIT`, which PostgreSQL
+•   rejects; rewrite as `ctid IN (SELECT ... LIMIT)` subqueries.
+• - Checksum verification chunked rows by physical scan position, so
+•   VACUUM FULL (which rewrites tables) could produce false integrity
+•   mismatches; bucket rows by their own md5 instead.
+• - `bytes_freed` sign was inverted (reported negative when the store
+•   shrank); report before - after.
+• - The compaction-in-progress marker was left set when a cycle errored,
+•   causing every future sweep to skip the node; clear it on failure so
+•   the node can retry.
+• - Drop invalid `lto`/`panic` keys from the stellar-wasm-cache release
+•   package profile; modern cargo rejects them in package profiles.
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+
+
+## Chart v2.5.0 (2026-09-02) [minor]
+
+• Merge pull request #188 from Bouynaty/fix/issue-85-backend-horizon-database-migration-health-gate
+🐛 fix: horizon database migration health-gate controller
+• Merge branch 'main' into fix/issue-85-backend-horizon-database-migration-health-gate
+• Merge pull request #177 from oyeyemidavid-gif/feat/rollout-timeline-tracker
+✨ feat(timeline): add Stellar-specific rollout tracker visualizer
+• Merge pull request #174 from Fang0067/feat/argocd-finalizer-tracking-widget
+✨ feat(frontend): ArgoCD Sync Status & Finalizer Tracking Widget
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+✨ feat(timeline): add Stellar-specific rollout tracker visualizer
+• Standard Kubernetes UIs only show raw container status during a rolling
+• update. Add a standalone Vite app under frontend/timeline whose tracker
+• visualizes the Stellar initialization micro-phases per replica of a
+• StellarNode StatefulSet: Database Schema Migration -> History Catchup ->
+• Quorum Peering -> Fully Synced.
+• - Per-replica cards (Argo Rollouts-inspired) with a phase stepper, custom
+•   progress bars for ledger catch-up alongside raw Kubernetes container
+•   status, and highlighted human-readable diagnostics for blocked pods
+• - Deterministic 3-pod simulation where pod #1 freezes in History Catchup,
+•   isolating it as the rollout bottleneck behind a StatefulSet update gate;
+•   "Resume stuck replica" releases the gate
+• - useRolloutStream hook batches poll/WebSocket snapshots through
+•   requestAnimationFrame and drops unchanged revisions, so fast streams
+•   never thrash React rendering
+• - 19 unit tests covering phase derivation, stall detection, diagnostics,
+•   operator API normalization, and the full stuck-catchup lifecycle
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+📝 docs(argocd): add README, lockfile, and gitignore for ArgoCD widget
+✨ feat(frontend): add ArgoCD Sync Status & Finalizer Tracking Widget
+• Implements issue #14. Adds a dedicated React widget under
+• frontend/widgets/argocd/ that interfaces with the ArgoCD API to
+• monitor StellarNode application sync states and identify resources
+• stuck in Terminating due to Kubernetes Finalizers.
+• Key additions:
+• - argoCdParser.js: pure, zero-dependency parser for ArgoCD Application
+•   resource trees. Flattens nested trees iteratively (stack-safe for
+•   100+ resource apps), detects Terminating resources, isolates
+•   Stellar-K8s specific finalizers, and generates contextual resolution
+•   hints per resource kind (Pod, PVC, PV, StellarNode).
+• - ArgoCdFinalizerWidget.jsx: React widget with per-app sidebar
+•   navigation, sync/health badges, Finalizer lock cards with
+•   expandable kubectl remediation hints, and an efficient polling
+•   client (ArgoCdPoller) that cancels in-flight requests on unmount.
+• - argoCdParser.test.js: 35 unit tests covering categorize,
+•   extractStellarFinalizers, isTerminating, buildResolutionHint,
+•   flattenResourceTree, and parseAppState including edge cases,
+•   malformed responses, and 100+ resource tree performance.
+• - styles.css: dark-mode premium design system consistent with the
+•   existing analytics panel (Space Grotesk + DM Mono typography,
+•   glassmorphism-inspired surface layers, micro-animation hover states).
+• - main.jsx: embed-friendly entry point configurable via URL query
+•   params (?base=, ?token=, ?poll=, ?mode=mock|live).
+• - package.json + vite.config.js + index.html: standalone Vite app
+•   with ArgoCD API proxy pre-configured.
+• Verification: node --test src/argoCdParser.test.js → 35/35 pass
+
+
+## Chart v2.4.0 (2026-09-02) [minor]
+
+• Merge pull request #185 from nancybexter90-ctrl/fix/issue-15-backend-dynamic-kafka-partitioning-for-scp
+✨ feat: dynamic Kafka partitioning for SCP analytics engine
+• Merge branch 'main' into fix/issue-15-backend-dynamic-kafka-partitioning-for-scp
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+
+
+## Chart v2.3.0 (2026-09-02) [minor]
+
+• Merge pull request #173 from temisan0x/feat/issue-52-alert-rule-builder
+• Feat/issue 52 alert rule builder
+• Merge branch 'main' into feat/issue-52-alert-rule-builder
+• Merge pull request #172 from Davizemons/feat/frontend-comparison-dashboard
+✨ feat(frontend): add multi-cluster comparison dashboard
+• Merge branch 'main' into feat/frontend-comparison-dashboard
+• Merge pull request #171 from jbeloved700/feat/ttl-bumper-contract
+✨ feat(contracts): add Soroban TTL auto-bump maintenance contract
+• Merge branch 'main' into feat/ttl-bumper-contract
+• Merge pull request #168 from Salome-Agu/feat/escrow-vault-contract
+✨ feat(escrow-vault): add proof-verified non-custodial escrow & collateral vault contract
+• Merge pull request #175 from sudo-robi/feature/flamegraph-dr-dashboard
+• Implement flamegraph and DR Command Center dashboard
+• Merge branch 'main' into feature/flamegraph-dr-dashboard
+• Merge pull request #176 from Techman-devv/feat/staking-vault-contract
+✨ feat(contracts): add Decentralized Staking & Yield Distribution Engine (#73)
+• Merge pull request #178 from mubby4/issue-9-topology-visualizer
+• Build WebGL topology visualizer
+• Merge pull request #179 from buki70/feat/visual-topology-configurator
+✨ feat(frontend): add visual drag-and-drop topology configurator
+• Merge branch 'main' into feat/visual-topology-configurator
+• Merge branch 'main' into feat/frontend-comparison-dashboard
+• Merge branch 'upstream/main' into feat/staking-vault-contract
+• Merge remote-tracking branch 'agnesnaomiolm/main' into feat/issue-52-alert-rule-builder
+• # Conflicts:
+• #	Cargo.toml
+• Merge remote-tracking branch 'upstream/main' into feat/staking-vault-contract
+• # Conflicts:
+• #	Cargo.toml
+✨ feat(frontend): add visual drag-and-drop topology configurator
+• - Add frontend/configurator module (React 18 + TypeScript + Vite)
+• - topology_builder/types.ts: AZ, WorkerNode, PlacedStellarNode, TopologyState,
+•   ValidationResult, DragPayload type definitions
+• - topology_builder/topology_store.ts: React context + useReducer store with 12
+•   action types; createInitialState() seeds 3-zone us-east layout
+• - topology_builder/quorum_validator.ts: validateTopology() with 4 errors
+•   (INSUFFICIENT_ZONES, ZONE_MISSING_VALIDATOR, QUORUM_BELOW_THRESHOLD,
+•   SINGLE_ZONE_VALIDATORS) and 4 warnings (UNEVEN_DISTRIBUTION,
+•   NO_HISTORY_ARCHIVE, MISSING_QUORUM_SET, SEED_SECRET_MISSING)
+• - WorkerNode.tsx: draggable worker node tile with HTML5 native DnD
+• - AvailabilityZone.tsx: drop-zone container with drag-over glow and
+•   per-zone validation messages
+• - StellarNodePlacer.tsx: node-type palette with inline config form
+• - TopologyBuilder.tsx: main orchestrator with live validation badge and
+•   manifest modal with clipboard copy
+• - frontend/utils/manifest_builder.ts: generates valid stellar.org/v1alpha1
+•   StellarNode YAML + PodDisruptionBudget using pure template literals
+• - 43 tests passing (21 quorum_validator + 22 manifest_validation)
+• - TypeScript strict mode with zero errors
+• Add topology visualizer workspace
+✨ feat(contracts): add Decentralized Staking & Yield Distribution Engine (#73)
+• Implements the Synthetix/Uniswap StakingRewards accumulator model for
+• Soroban smart contracts as described in issue #73.
+• ## Key modules
+• - contracts/staking-vault/src/lib.rs — contract entry-points:
+•   initialize, deposit, withdraw, claim_reward, compound,
+•   emergency_withdraw, set_paused, and view functions.
+• - contracts/staking-vault/src/reward.rs — pure reward math:
+•   compute_reward_per_token, compute_earned, compute_new_reward_rate.
+• ## Algorithm
+• Reward tracking uses the standard per-token accumulator:
+•   reward_per_token += (Δt × rate × PRECISION) / total_staked
+•   user_earned      += stake × (rpt_now - rpt_paid) / PRECISION
+• REWARD_PRECISION = 1e18 eliminates precision loss for small stake
+• weights or short block durations, satisfying the zero-rounding-drift
+• requirement in the issue.
+• ## Features
+• - Continuous reward accrual with REWARD_PRECISION = 1e18
+• - Deposit / Withdraw with automatic reward checkpoint on every call
+• - Claim rewards at any time
+• - Compound rewards back into stake (same-token pools)
+• - Emergency Withdraw — bypasses reward math when contract is paused,
+•   guaranteeing capital recovery
+• - Admin pause / unpause
+• ## Tests (13/13 pass)
+• - Proportional reward distribution across multiple stakers
+• - Reward caps at period_finish (no accrual after deadline)
+• - Balance solvency invariant: no staker earns more than total emitted
+• - Zero-stake earns zero
+• - Stored rewards accumulate correctly across checkpoints
+• - Rounding no-drift: 100 incremental checkpoints == single computation
+• - New reward rate rollover when period is still active
+• Closes #73
+• Implement flamegraph and DR Command Center dashboard
+📝 ci: validate exported PrometheusRule YAML with promtool (#52)
+• Adds a dedicated workflow that runs on changes under frontend/builder/:
+• - npm test (29 unit tests: PromQL generator + YAML exporter)
+• - npm run build (verifies React/JSX correctness)
+• - Generates 5 complex sample alert conditions via the real
+•   yamlExporter.js code path (multi-comparison AND/OR, increase()
+•   on counters, various severities)
+• - Validates all 5 against promtool check rules
+• Satisfies the ticket's validation requirement without needing
+• promtool installed locally.
+✨ feat(alerts): fix PromQL preview wrap, default threshold, and hardened Prometheus test error handling
+• - promql-preview now wraps long expressions instead of horizontal-scrolling
+• - Default comparison threshold changed from 0 to 3, matching the real
+•   fork-detector-alerts.yaml convention, so first-time users see a
+•   realistic example
+• - Test against Prometheus button now checks response content-type
+•   before parsing JSON, producing a clear 'could not reach Prometheus'
+•   message instead of a raw parse exception when no instance is running
+✨ feat(frontend): add multi-cluster comparison dashboard
+🐛 fix: remove invalid panic/lto keys from package-level profile override
+• Cargo rejects panic and lto in [profile.release.package.*] overrides —
+• only opt-level, codegen-units, debug, debug-assertions, overflow-checks,
+• and strip are valid there. This was blocking cargo build entirely.
+• Unrelated to #52; found while setting up the alert rule builder.
+✨ feat(contracts): add Soroban TTL auto-bump maintenance contract
+• Implements the ttl-bumper Soroban contract for automated keeper-bot TTL
+• maintenance of Stellar contract storage entries.
+• Key modules:
+• - contracts/ttl-bumper/src/lib.rs  – main contract (initialize, register,
+•   deregister, bump_batch, bounty deposit/withdraw, view helpers)
+• - contracts/ttl-bumper/src/registry.rs – persistent registry of
+•   (contract_id, threshold, extension, owner) entries; DataKey enum,
+•   RegistryEntry struct, and all CRUD helpers
+• - contracts/ttl-bumper/src/test.rs – 32 integration tests covering the
+•   full keeper workflow, key-aging simulation, bounty exhaustion safety,
+•   registry capacity limits, and auth guards
+• Contract features:
+• - Registry tracks up to 256 contract keys requiring periodic TTL bumping
+• - bump_batch() extends up to 50 entries in a single transaction
+• - Keeper bots receive XLM bounties only for keys actually bumped
+• - Bounty pool cannot be exhausted below zero; bumps succeed even when
+•   the pool is empty (fail-open for TTL extension, fail-safe for bounties)
+• - Admin-only bounty pool management (deposit, withdraw, set_bounty)
+• - Per-entry auth: only the registered owner or admin can deregister
+• Workspace: added contracts/ttl-bumper as a workspace member in Cargo.toml.
+• All 32 tests pass; cargo build succeeds.
+✨ feat(escrow-vault): add proof-verified non-custodial escrow & collateral vault contract
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+
+
+## Chart v2.2.0 (2026-09-02) [minor]
+
+• Merge pull request #183 from kalebosas2-dev/feat/issue-7-contract-develop-zero-knowledge-merkle-proof
+🐛 fix: add ZK Merkle proof verifier for fast-sync ingestion
+• Merge branch 'main' into feat/issue-7-contract-develop-zero-knowledge-merkle-proof
+• Merge pull request #180 from Victorjonah-prog/feature/resource-saturation-heatmap
+✨ feat(frontend): real-time resource saturation heatmap for worker nodes
+• Merge branch 'main' into feature/resource-saturation-heatmap
+• Merge pull request #182 from Timmmytunner/fix/issue-88-frontend-soroban-smart-contract-flamegraph-gas
+✨ feat: add Soroban flamegraph gas profiler interface
+• Merge pull request #181 from Vivian-04/feature/79-promql-metrics-exporter
+✨ feat(telemetry): add PromQL metrics exporter for Soroban gas profiling
+• Merge branch 'main' into feature/79-promql-metrics-exporter
+• Merge pull request #184 from LohdGordon/fix/issue-98-documentation-multi-cluster-high-availability
+📝 docs: add multi-cluster HA architecture and active-passive blueprint
+• Merge branch 'main' into fix/issue-98-documentation-multi-cluster-high-availability
+• Merge pull request #186 from BIGSMKE12/feat/issue-66-contract-decentralized-identity-did-credential
+🐛 fix: add W3C DID VC verifier sub-contract for Soroban
+• Merge branch 'main' into feat/issue-66-contract-decentralized-identity-did-credential
+• Merge pull request #192 from isaac4real-art/feat/issue-26-contract-on-chain-dynamic-gas-price-oracle-sub
+🐛 fix: add on-chain dynamic gas price oracle sub-contract for Soroban
+• Merge pull request #196 from Naajih09/Documentation]-Storage-Corruption-Recovery-&-Database-Repair-Playbook
+📝 docs: add storage corruption recovery & database repair playbook
+• Merge branch 'main' into Documentation]-Storage-Corruption-Recovery-&-Database-Repair-Playbook
+• Merge pull request #189 from Nwapu-TrustJah/security/issue-99-documentation-kubernetes-rbac-security
+🐛 fix: add RBAC hardening manual and least-privilege policies
+• Merge pull request #194 from Fayvor22/Quorum
+✨ feat: Develop on-chain quorum set validation engine in wasm
+• Merge branch 'main' into Quorum
+• Merge branch 'main' into Quorum
+• Merge branch 'main' into Quorum
+• Create repair-pod.yaml, database repair playbook
+📝 docs: add storage corruption recovery & database repair playbook
+• Create storage-repair.md
+✨ feat: ## [Contract] On-Chain Dynamic Gas Price Oracle Sub-Contract (#26)
+✨ feat: ## [Contract] On-Chain Dynamic Gas Price Oracle Sub-Contract (#26)
+✨ feat: ## [Contract] On-Chain Dynamic Gas Price Oracle Sub-Contract (#26)
+• security: ## [Documentation] Kubernetes RBAC Security Hardening & Leas (#99)
+• security: ## [Documentation] Kubernetes RBAC Security Hardening & Leas (#99)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+✨ feat(frontend): real-time resource saturation heatmap for worker nodes
+• Implements issue #10 - React/D3 heatmap component visualising CPU and
+• Memory saturation across up to 100 Kubernetes worker nodes.
+• New files:
+• - frontend/analytics/src/heatmapModel.js
+•   Pure data model: parses Prometheus API responses, merges cpu/memory
+•   samples per node, tombstones disappeared nodes, classifies into five
+•   saturation bands (idle/moderate/elevated/high/critical).
+• - frontend/analytics/src/heatmapModel.test.js
+•   31 unit tests (23 new for heatmap model, all passing).
+• - frontend/analytics/src/components/heatmap/HeatmapGrid.jsx
+•   Main component. D3 manages SVG DOM directly (enter/update/exit) to
+•   avoid VDOM diffing overhead on 100-node 5-second ticks. CSS transitions
+•   animate color changes between polls without blocking the JS thread.
+•   ResizeObserver recalculates column count on container resize.
+•   Accessible: role=grid, role=gridcell, aria-label, keyboard focus/tooltip.
+• - frontend/analytics/src/components/heatmap/HeatmapTooltip.jsx
+•   Portal-based tooltip with CPU%, Memory%, saturation band, zone, and
+•   offline badge. Keyboard-accessible (Enter/Space on focused cell).
+• - frontend/analytics/src/components/heatmap/usePrometheusPoller.js
+•   Polling hook: fetches stellar_operator_resource_usage at 5 s intervals,
+•   surfaces status (idle/polling/error/offline) and lastPollAt timestamp.
+• - frontend/analytics/scripts/mock-prometheus.mjs
+•   Mock Prometheus HTTP server simulating 100 worker nodes across three
+•   availability zones with a rolling CPU spike wave (configurable window
+•   and interval). Responds to GET /api/v1/query in Prometheus vector format.
+• Modified files:
+• - frontend/analytics/src/main.jsx
+•   Adds Topology / Heatmap tab switcher in the app shell toolbar.
+•   HeatmapGrid rendered on the Heatmap tab, WS connection only opened
+•   when the Topology tab is active.
+• - frontend/analytics/src/styles.css
+•   Heatmap-specific styles: grid wrap, summary strip, legend swatches,
+•   portal tooltip, view-tab active state, responsive breakpoints.
+• - frontend/analytics/package.json
+•   Adds d3@7.9.0 dependency and mock:prometheus npm script.
+• - frontend/analytics/vite.config.js
+•   Adds /api/prometheus proxy pointing at mock server (localhost:9091).
+• Closes #10
+✨ feat(telemetry): add PromQL metrics exporter for Soroban gas profiling
+• - New stellar-telemetry crate with async log parser and Prometheus exporter
+• - Zero-copy JSON parser using string slicing for minimal heap allocations
+• - Histograms for soroban_contract_cpu_instructions and soroban_contract_memory_bytes
+• - /metrics HTTP endpoint with labeled histogram and counter vectors
+• - Async streaming parser via parse_log_stream() with StreamStats
+• - Criterion benchmarks for parser throughput validation
+• - Unit tests for parser correctness and exporter text format
+• Fixes #79
+• Delete telemetry/BENCHMARKS.md
+• Update gas_exporter.rs
+• Update parser.rs
+• Create Cargo.toml
+• Create BENCHMARKS.md
+• Update Cargo.toml
+• Create lib.rs
+• Create gas_exporter.rs
+✨ feat: implement zero-copy log parser
+
+
+## Chart v2.1.0 (2026-09-02) [minor]
+
+• Merge pull request #193 from Deevhyne1023/security/issue-80-backend-automated-mtls-certificate-generation
+✨ feat: automated mTLS certificate generation and hot-reload engine
+• Merge branch 'main' into security/issue-80-backend-automated-mtls-certificate-generation
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+
+
+## Chart v2.0.0 (2026-09-02) [major]
+
+## Chart v3.6.0 (2026-09-30) [minor]
+
+• Merge pull request #1649 from Divine-designs/feat/sla-reporting-delegation-rewards
+✨ feat: uptime SLA reporting and delegation reward tracking
+✨ feat: add uptime SLA tracking and delegation reward ledger modules
+
+
+## Chart v3.5.0 (2026-09-30) [minor]
+
+• Merge pull request #1648 from AnibeAchema/feat/1499-namespace-teardown-crd
+• Feat/1499 namespace teardown crd
+✨ feat(crd): add NamespaceTeardown state-machine CRD (#1499)
+
+
+## Chart v3.4.0 (2026-09-30) [minor]
+
+• Merge pull request #1647 from AnibeAchema/feat/1500-tenant-isolation-crd
+✨ feat(crd): express node and audit isolation boundaries on Tenant (#1500)
+• Merge pull request #1646 from Debbys-design/drips/1626-1627-1628-1629
+• Wire federation secrets sync + CI helper targets and add repo-health/dep-gate bats tests
+• Merge pull request #1644 from confima-source/feat/welcome-first-contribution-workflow
+✨ feat: wire WELCOME_TEMPLATE.md into first-contribution workflow
+• Merge pull request #1654 from Shindailulu/fix/crd-seed-rotation-status-and-seed-env-dedupe
+🐛 fix(crd,controller): add seed rotation status fields and fix seed env dedupe (#1557, #1556)
+🐛 fix(crd,controller): add seed rotation status fields and fix seed env dedupe (#1557, #1556)
+• Closes #1557
+• Closes #1556
+• This PR addresses two related issues:
+• 1. #1557 - CRD Status Fields for Seed Rotation Observability:
+•    - Adds three status fields to StellarNodeStatus: observedSeedSecretVersion,
+•      observedPassphraseSecretVersion, lastSecretRotationTime
+•    - Updates config/crd/stellarnode-crd.yaml, charts/stellar-operator/templates/crd.yaml,
+•      schemas/crd/StellarNode-stellar.org-v1alpha1.json, docs/api-reference.md,
+•      and all 5 Helm rendered goldens
+•    - Updates secret_watcher.rs to write all three fields via new rotation_status_patch()
+•    - Adds schema validation tests in secret_rotation_schema_test.rs
+• 2. #1556 - Duplicate STELLAR_CORE_SEED Env Var Validation:
+•    - Changes build_pod_template to use merge_env_overrides() instead of Vec::extend
+•      for seed injection, preventing duplicate STELLAR_CORE_SEED entries
+•    - Documents the dedupe behavior and precedence in CONTRIBUTING.md
+•    - Adds comprehensive unit + property-based tests in seed_env_dedupe_test.rs
+• Also fixes two pre-existing build breaks on main:
+• - Missing closing brace in reconciler.rs:476 (tokio::spawn block)
+• - TypedLocalObjectReference import path in ledger_migration.rs for k8s-openapi 0.22
+• - resources_test.rs path fixes for default_readiness_probe, build_statefulset, build_deployment
+• Signed-off-by: Shindai Ufulul <ufululshindai23@gmail.com>
+✨ feat(crd): express node and audit isolation boundaries on Tenant (#1500)
+🐛 fix: #1629 [EPIC] Add bats Coverage for dep-gate Script
+• Closes #1629
+🐛 fix: #1628 [EPIC] Add bats Coverage for repo-health Script
+• Closes #1628
+🐛 fix: #1627 [EPIC] Add Makefile Targets for CI-Only Helper Scripts
+• Closes #1627
+🐛 fix: #1626 [EPIC] Wire Federation Secrets Sync Script into Makefile and
+• Closes #1626
+✨ feat: wire WELCOME_TEMPLATE.md into first-contribution workflow
+• - Add .github/workflows/welcome-first-contribution.yml
+• - Triggers on issues[opened] and pull_request_target[opened]
+• - Queries prior issues and PRs to prevent duplicate greetings
+• - Reads template content dynamically from .github/WELCOME_TEMPLATE.md
+• - Scopes permissions to issues:write and contents:read only
+• Merge pull request #1643 from Mathews-25/drips/1630-1631-1632-1633
+• Add bats coverage for rotation/dead-code scripts, document harness, enable mkdocs strict
+• Merge pull request #1642 from mayasimi/fix/readiness-probe-and-container-commands
+🐛 fix: comprehensive readiness probe state coverage and explicit contai…
+• Merge pull request #1641 from Goodnessukaigwe/fix/1481-unified-observability-contract-across-logs-metrics-and-traces
+• [1481] [EPIC] Unified Observability Contract Across Logs, Metrics, and Traces
+• Merge pull request #1640 from Goodnessukaigwe/fix/1482-automatic-drain-rescheduling-orchestrator-for-planned-maintenance
+• [1482] [EPIC] Automatic Drain & Rescheduling Orchestrator for Planned Maintenance
+• Merge branch 'main' into fix/1482-automatic-drain-rescheduling-orchestrator-for-planned-maintenance
+• Merge pull request #1639 from Goodnessukaigwe/fix/1483-cryptographic-policy-engine-for-runtime-admission-decisions
+• [1483] [EPIC] Cryptographic Policy Engine for Runtime Admission Decisions
+• Merge branch 'main' into fix/1483-cryptographic-policy-engine-for-runtime-admission-decisions
+🐛 fix: #1633 [EPIC] Enable mkdocs Strict Mode for Link and Nav Integrity
+• Closes #1633
+🐛 fix: #1632 [EPIC] Document bats Test Harness Usage in CONTRIBUTING
+• Closes #1632
+🐛 fix: #1631 [EPIC] Add bats Coverage for dead-code-report Script
+• Closes #1631
+🐛 fix: #1630 [EPIC] Add bats Coverage for secret-rotation-check Script
+• Closes #1630
+🐛 fix: comprehensive readiness probe state coverage and explicit container commands
+• Resolves #1559, #1558
+• ## Changes
+• ### Readiness Probe State Machine (#1559)
+• - Updated default_readiness_probe in resources.rs to handle all stellar-core states
+• - Accept only Synced! and Tracking! as ready states
+• - Reject all other states: CATCHING_UP, SYNCING, JOINING_SCP, BOOTING_UP, DISCONNECTED, etc.
+• - Prevents routing traffic to nodes that cannot participate in consensus
+• - Improved script using case statement for explicit state matching
+• ### Container Commands for All Node Types (#1558)
+• - Added optional command and args fields to StellarNodeSpec CRD
+• - Implemented explicit commands for all node types in build_container:
+•   - Validator: /usr/bin/stellar-core run --conf /config/stellar-core.cfg
+•   - Horizon: /stellar-horizon
+•   - SorobanRpc: /stellar-rpc
+• - Eliminates reliance on image CMD which may be empty or missing
+• - Supports custom image overrides via spec.command and spec.args
+• ### Testing
+• - Added comprehensive unit tests for readiness probe state handling
+• - Added tests for container command generation and CRD overrides
+• - Tests verify all state transitions and command configurations
+• ### Documentation
+• - Created docs/operations/readiness-probe-states.md
+•   - Documents all stellar-core states and readiness criteria
+•   - Includes troubleshooting guides and monitoring recommendations
+• - Created docs/operations/container-commands.md
+•   - Explains default commands and override mechanism
+•   - Provides examples and best practices
+• - Updated docs/operations/index.md with new doc links
+• ## Testing
+• Run tests with:
+• cargo test -p stellar-k8s readiness_probe
+• cargo test -p stellar-k8s container_command
+✨ feat(observability): versioned resource-attribute contract
+• Publish a JSON Schema shared by logs, metrics, and traces, enforce it at
+• OTel ingest with dead-letter routing, and lint unknown attributes in CI.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+✨ feat(maintenance): declarative MaintenancePlan drain orchestrator
+• Coordinate PDB-aware draining, replacement prewarming, SLO verification,
+• and abort/recovery through a MaintenancePlan CR rather than serial scripts.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+✨ feat(admission): signed policy-bundle engine with fail-closed verification
+• Evaluate CEL policy bundles at admission only after Ed25519 trust-root
+• verification, cache verified digests, and require dual approval for
+• emergency override plus explicit rollback of the last valid bundle.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+
+
 ## Chart v3.3.0 (2026-09-28) [minor]
 
 • Merge pull request #1638 from Goodnessukaigwe/fix/1484-cost-aware-workload-placement-across-spot-and-on-demand-capacity
