@@ -92,3 +92,6 @@ rendered-output.yaml
 test_*.rs
 starfield.html
 
+# mkdocs build output from `make docs-build`
+/site/
+

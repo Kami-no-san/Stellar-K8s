@@ -27,6 +27,7 @@
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint helm-unittest helm-upgrade-test link-check link-check-all changelog \
 	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec docs-lint \
+	docs-build docs-serve \
 	third-party-licenses check-third-party-licenses \
 	benchmark benchmark-webhook benchmark-all \
 	benchmark-crd benchmark-helm benchmark-api benchmark-reconciliation \
@@ -346,6 +347,17 @@ docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs qual
 check-openapi-spec: ## Fail if OpenAPI spec is missing required operator routes
 	@echo "→ Checking OpenAPI spec coverage..."
 	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml --check
+
+# ── Documentation Site ────────────────────────────────────────────────────────
+
+docs-build: ## Build the documentation site into site/
+	@echo "→ Building documentation site (mkdocs)..."
+	@python3 -m mkdocs build
+	@echo "✓ Documentation site written to site/"
+
+docs-serve: ## Serve the documentation site locally (http://127.0.0.1:8000)
+	@echo "→ Serving documentation at http://127.0.0.1:8000 (Ctrl+C to stop)"
+	@python3 -m mkdocs serve
 
 # ── Kubernetes ────────────────────────────────────────────────────────────────
 
