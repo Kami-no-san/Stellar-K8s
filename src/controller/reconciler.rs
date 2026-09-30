@@ -476,6 +476,8 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
             maintenance::run_maintenance_plan_controller(plan_client, plan_reporter).await
         {
             error!("MaintenancePlan controller stopped with error: {}", e);
+        }
+    });
     // Preemptive migration for scheduled-node-group / spot interruption signals (#1484).
     let preemptive = Arc::new(
         super::preemptive_spot_migration::PreemptiveSpotMigrator::new(
@@ -4600,6 +4602,6 @@ async fn hardware_generation_for_metrics(client: &Client, node: &StellarNode) ->
                 err
             );
             "unknown".to_string()
-        }
+        },
     }
 }

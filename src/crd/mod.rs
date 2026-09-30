@@ -61,6 +61,8 @@
 
 #[cfg(test)]
 mod blue_green_schema_test;
+#[cfg(test)]
+mod secret_rotation_schema_test;
 pub mod capacity_forecast;
 mod cnpg;
 pub mod control_plane_health;

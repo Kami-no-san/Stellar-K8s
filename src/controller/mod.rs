@@ -161,6 +161,8 @@ pub(crate) mod resources;
 mod resources_test;
 pub mod secret_policy_controller;
 pub(crate) mod secret_watcher;
+#[cfg(test)]
+mod seed_env_dedupe_test;
 pub mod service_mesh;
 mod snapshot;
 pub mod snapshot_worker;
