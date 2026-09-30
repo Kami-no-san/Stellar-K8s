@@ -2270,7 +2270,7 @@ mod sidecar_peer_env {
 fn test_readiness_probe_accepts_synced_state() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let probe = super::default_readiness_probe(&NodeType::Validator);
     
     // Verify the probe is an exec probe
     assert!(probe.exec.is_some(), "Validator readiness probe must be an exec probe");
@@ -2293,7 +2293,7 @@ fn test_readiness_probe_accepts_synced_state() {
 fn test_readiness_probe_accepts_tracking_state() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let probe = super::default_readiness_probe(&NodeType::Validator);
     let exec_action = probe.exec.unwrap();
     let script = &exec_action.command.unwrap()[2];
     
@@ -2305,7 +2305,7 @@ fn test_readiness_probe_accepts_tracking_state() {
 fn test_readiness_probe_rejects_catching_up_state() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let probe = super::default_readiness_probe(&NodeType::Validator);
     let exec_action = probe.exec.unwrap();
     let script = &exec_action.command.unwrap()[2];
     
@@ -2319,7 +2319,7 @@ fn test_readiness_probe_rejects_catching_up_state() {
 fn test_readiness_probe_has_correct_timing() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let probe = super::default_readiness_probe(&NodeType::Validator);
     
     // Verify probe timing configuration
     assert_eq!(probe.initial_delay_seconds, Some(15));
@@ -2333,7 +2333,7 @@ fn test_readiness_probe_has_correct_timing() {
 fn test_horizon_readiness_probe_uses_http() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::Horizon);
+    let probe = super::default_readiness_probe(&NodeType::Horizon);
     
     // Horizon should use HTTP health check, not exec
     assert!(probe.http_get.is_some(), "Horizon readiness probe must use HTTP GET");
@@ -2347,7 +2347,7 @@ fn test_horizon_readiness_probe_uses_http() {
 fn test_soroban_readiness_probe_uses_http() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::SorobanRpc);
+    let probe = super::default_readiness_probe(&NodeType::SorobanRpc);
     
     // SorobanRpc should use HTTP health check, not exec
     assert!(probe.http_get.is_some(), "SorobanRpc readiness probe must use HTTP GET");
@@ -2361,7 +2361,7 @@ fn test_soroban_readiness_probe_uses_http() {
 fn test_readiness_probe_queries_correct_port() {
     use crate::crd::NodeType;
     
-    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+    let probe = super::default_readiness_probe(&NodeType::Validator);
     let script = &probe.exec.unwrap().command.unwrap()[2];
     
     // Verify the script queries the correct stellar-core HTTP API port
@@ -2399,7 +2399,7 @@ fn test_validator_has_explicit_command() {
     let mut node = crate::crd::StellarNode::new("test-validator", spec);
     node.metadata.namespace = Some("default".to_string());
     
-    let sts = super::super::build_statefulset(&node, false);
+    let sts = super::build_statefulset(&node, false, None);
     let container = sts
         .spec
         .unwrap()
@@ -2450,7 +2450,7 @@ fn test_horizon_has_explicit_command() {
     let mut node = crate::crd::StellarNode::new("test-horizon", spec);
     node.metadata.namespace = Some("default".to_string());
     
-    let dep = super::super::build_deployment(&node, false);
+    let dep = super::build_deployment(&node, false);
     let container = dep
         .spec
         .unwrap()
@@ -2498,7 +2498,7 @@ fn test_soroban_has_explicit_command() {
     let mut node = crate::crd::StellarNode::new("test-soroban", spec);
     node.metadata.namespace = Some("default".to_string());
     
-    let dep = super::super::build_deployment(&node, false);
+    let dep = super::build_deployment(&node, false);
     let container = dep
         .spec
         .unwrap()
@@ -2548,7 +2548,7 @@ fn test_custom_command_override() {
     let mut node = crate::crd::StellarNode::new("test-custom", spec);
     node.metadata.namespace = Some("default".to_string());
     
-    let sts = super::super::build_statefulset(&node, false);
+    let sts = super::build_statefulset(&node, false, None);
     let container = sts
         .spec
         .unwrap()

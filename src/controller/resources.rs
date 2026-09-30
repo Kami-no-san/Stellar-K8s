@@ -222,7 +222,7 @@ fn default_liveness_probe(node_type: &crate::crd::NodeType) -> k8s_openapi::api:
 ///   The liveness probe (TCP socket) is intentionally kept separate so that a
 ///   syncing node is never restarted — only removed from the ready set.
 /// - Horizon / SorobanRpc: HTTP GET /health on port 8000
-fn default_readiness_probe(node_type: &crate::crd::NodeType) -> k8s_openapi::api::core::v1::Probe {
+pub(crate) fn default_readiness_probe(node_type: &crate::crd::NodeType) -> k8s_openapi::api::core::v1::Probe {
     use k8s_openapi::api::core::v1::{ExecAction, HTTPGetAction, Probe};
     use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
     match node_type {
@@ -2474,11 +2474,15 @@ fn build_pod_template(
     if let Some(inj) = seed_injection {
         // Extend the main container (index 0) with seed env vars and volume mounts
         if let Some(container) = pod_spec.containers.first_mut() {
-            if let Some(ref mut env) = container.env {
-                env.extend(inj.env_vars());
-            } else {
-                container.env = Some(inj.env_vars());
-            }
+            // Merge by name instead of appending: `seedSecretRef` and
+            // `seedSecretSource` can both be set on a node, and the legacy
+            // `STELLAR_CORE_SEED` entry built in `build_container` must never
+            // end up next to the one this injection adds. A duplicated env var
+            // name is rejected by the API server, and `seedSecretSource` wins
+            // per `ValidatorConfig::resolve_seed_source` precedence.
+            let mut env = container.env.take().unwrap_or_default();
+            merge_env_overrides(&mut env, &inj.env_vars());
+            container.env = Some(env);
             if let Some(ref mut mounts) = container.volume_mounts {
                 mounts.extend(inj.volume_mounts());
             } else {
@@ -3593,6 +3597,77 @@ fn build_cache_proxy_container(cache: &crate::crd::SorobanCacheConfig) -> Contai
     let mut limits = BTreeMap::new();
     limits.insert("cpu".to_string(), Quantity("250m".to_string()));
     limits.insert("memory".to_string(), Quantity("256Mi".to_string()));
+fn build_diagnostic_sidecar_resources(
+    override_resources: Option<&ResourceRequirements>,
+) -> K8sResources {
+    let requests_cpu = override_resources
+        .map(|resources| resources.requests.cpu.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(DIAGNOSTIC_SIDECAR_DEFAULT_CPU);
+    let requests_memory = override_resources
+        .map(|resources| resources.requests.memory.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(DIAGNOSTIC_SIDECAR_DEFAULT_MEMORY);
+    let limits_cpu = override_resources
+        .map(|resources| resources.limits.cpu.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(DIAGNOSTIC_SIDECAR_DEFAULT_CPU);
+    let limits_memory = override_resources
+        .map(|resources| resources.limits.memory.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(DIAGNOSTIC_SIDECAR_DEFAULT_MEMORY);
+
+    K8sResources {
+        requests: Some(
+            [
+                ("cpu".to_string(), Quantity(requests_cpu.to_string())),
+                ("memory".to_string(), Quantity(requests_memory.to_string())),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+        limits: Some(
+            [
+                ("cpu".to_string(), Quantity(limits_cpu.to_string())),
+                ("memory".to_string(), Quantity(limits_memory.to_string())),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+        claims: None,
+    }
+}
+
+/// Merge `overrides` into `base`, keyed by env var name.
+///
+/// This is the single place where container env vars are combined, and it is
+/// what keeps a rendered pod spec free of duplicate env var names. A container
+/// with two entries of the same name is rejected by the API server, so every
+/// injection site (CRD `stellarCoreEnv`/`horizonEnv` overrides and the
+/// `seedSecretSource` injection) must go through here rather than
+/// `Vec::extend`.
+///
+/// The last writer wins, which is what gives `seedSecretSource` precedence
+/// over the legacy `seedSecretRef` when a node sets both.
+fn merge_env_overrides(base: &mut Vec<EnvVar>, overrides: &[EnvVar]) {
+    for override_var in overrides {
+        if let Some(existing) = base.iter_mut().find(|env| env.name == override_var.name) {
+            *existing = override_var.clone();
+        } else {
+            base.push(override_var.clone());
+        }
+    }
+}
+
+fn build_workload_tolerations(node: &StellarNode) -> Option<Vec<Toleration>> {
+    let mut tolerations = node.spec.tolerations.clone();
+
+    if let Some(jurisdiction) = node.spec.placement.jurisdiction.as_ref() {
+        crate::controller::jurisdiction::merge_jurisdiction_tolerations(
+            &mut tolerations,
+            jurisdiction,
+        );
+    }
 
     Container {
         name: "soroban-cache".to_string(),

@@ -21,6 +21,12 @@ version: 3.3.0
 appVersion: "3.3.0"
 version: 3.3.0
 appVersion: "3.3.0"
+version: 3.6.0
+appVersion: "3.6.0"
+version: 3.6.0
+appVersion: "3.6.0"
+version: 3.6.0
+appVersion: "3.6.0"
 keywords:
   - stellar
   - kubernetes

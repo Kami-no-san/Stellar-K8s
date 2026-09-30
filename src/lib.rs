@@ -58,6 +58,8 @@
 //! - [`byzantine`] - Byzantine fault detection and analysis
 //! - [`log_scrub`] - PII and sensitive data scrubbing for logs
 //! - [`version_check`] - Background version checking against GitHub
+//! - [`sla`] - Uptime SLA tracking and monthly reports
+//! - [`delegation`] - Delegated stake and reward ledger
 //!
 //! # Example: Creating a Validator Node
 //!
@@ -124,6 +126,7 @@ pub mod cost_optimization;
 pub mod crd;
 pub mod data_pipeline;
 pub mod db_management;
+pub mod delegation;
 pub mod db_migrations;
 pub mod dependency_contract;
 pub mod degradation;
@@ -159,7 +162,7 @@ pub mod preflight;
 #[path = "profiling/mod.rs"]
 pub mod profiling;
 pub mod provenance;
-pub mod replica_quotas;
+// pub mod replica_quotas; // TODO: restore when module is implemented
 pub mod reproducible_build;
 pub mod progressive_config;
 pub mod runbook;
@@ -167,6 +170,7 @@ pub mod scheduler;
 pub mod schema_evolution;
 pub mod schema_registry;
 pub mod sdk;
+pub mod sla;
 pub mod secrets_broker;
 pub mod search;
 pub mod security;

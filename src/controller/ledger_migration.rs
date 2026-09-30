@@ -5,7 +5,8 @@ use k8s_openapi::api::core::v1::{
     VolumeResourceRequirements,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, TypedLocalObjectReference};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::api::core::v1::TypedLocalObjectReference;
 use kube::api::{Api, DynamicObject, ListParams, PostParams};
 use kube::discovery::ApiResource;
 use kube::{Client, ResourceExt};

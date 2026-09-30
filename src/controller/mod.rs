@@ -106,9 +106,10 @@ pub mod resource_optimization;
 pub(crate) mod resources;
 [cfg(test)]
 mod resources_test;
-pub mod rollout;
-pub mod secret_watcher;
-pub mod security;
+pub mod secret_policy_controller;
+pub(crate) mod secret_watcher;
+#[cfg(test)]
+mod seed_env_dedupe_test;
 pub mod service_mesh;
 mod csi_snapshot;
 pub mod snapshot;
