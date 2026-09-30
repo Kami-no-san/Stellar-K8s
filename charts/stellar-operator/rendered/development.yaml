@@ -1,4 +1,162 @@
 ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/component: tls
+    app.kubernetes.io/name: core-tls
+    app.kubernetes.io/part-of: stellar-network
+  name: stellar-operator-core-tls
+  namespace: stellar
+spec:
+  commonName: core.stellar.org
+  dnsNames:
+  - core.stellar.org
+  - stellar-core.stellar.svc.cluster.local
+  duration: 2160h
+  issuerRef:
+    kind: ClusterIssuer
+    name: stellar-operator-letsencrypt-prod
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  renewBefore: 720h
+  secretName: core-tls-tls
+  usages:
+  - server auth
+  - digital signature
+  - key encipherment
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/component: tls
+    app.kubernetes.io/name: horizon-tls
+    app.kubernetes.io/part-of: stellar-network
+  name: stellar-operator-horizon-tls
+  namespace: stellar
+spec:
+  commonName: horizon.stellar.org
+  dnsNames:
+  - horizon.stellar.org
+  - api.stellar.org
+  duration: 2160h
+  issuerRef:
+    kind: ClusterIssuer
+    name: stellar-operator-letsencrypt-prod
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  renewBefore: 720h
+  secretName: horizon-tls-tls
+  usages:
+  - server auth
+  - digital signature
+  - key encipherment
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/component: tls
+    app.kubernetes.io/name: soroban-rpc-tls
+    app.kubernetes.io/part-of: stellar-network
+  name: stellar-operator-soroban-rpc-tls
+  namespace: stellar
+spec:
+  commonName: soroban.stellar.org
+  dnsNames:
+  - soroban.stellar.org
+  - soroban-rpc.stellar.svc.cluster.local
+  duration: 2160h
+  issuerRef:
+    kind: ClusterIssuer
+    name: stellar-operator-letsencrypt-prod
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  renewBefore: 720h
+  secretName: soroban-rpc-tls-tls
+  usages:
+  - server auth
+  - digital signature
+  - key encipherment
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/component: tls
+    app.kubernetes.io/name: validator-tls
+    app.kubernetes.io/part-of: stellar-network
+  name: stellar-operator-validator-tls
+  namespace: stellar
+spec:
+  commonName: validator.stellar.org
+  dnsNames:
+  - validator.stellar.org
+  - stellar-validator-0.stellar.svc.cluster.local
+  - stellar-validator-1.stellar.svc.cluster.local
+  - stellar-validator-2.stellar.svc.cluster.local
+  duration: 2160h
+  issuerRef:
+    kind: ClusterIssuer
+    name: stellar-operator-letsencrypt-prod
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  renewBefore: 720h
+  secretName: validator-tls-tls
+  usages:
+  - server auth
+  - digital signature
+  - key encipherment
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 4.0.0
+    component: cert-manager
+    helm.sh/chart: stellar-operator-4.0.0
+  name: stellar-operator-letsencrypt-prod
+spec:
+  acme:
+    email: admin@stellar.org
+    privateKeySecretRef:
+      name: stellar-operator-letsencrypt-prod-account-key
+    server: https://acme-v02.api.letsencrypt.org/directory
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 4.0.0
+    component: cert-manager
+    helm.sh/chart: stellar-operator-4.0.0
+  name: stellar-operator-letsencrypt-staging
+spec:
+  acme:
+    email: admin@stellar.org
+    privateKeySecretRef:
+      name: stellar-operator-letsencrypt-staging-account-key
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -6,8 +164,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator
 rules:
 - apiGroups:
@@ -271,8 +429,56 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
+  name: stellar-operator-control-plane-health
+rules:
+- nonResourceURLs:
+  - /readyz
+  - /readyz/etcd
+  verbs:
+  - get
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+- apiGroups:
+  - stellar.org
+  resources:
+  - controlplanehealths
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+- apiGroups:
+  - stellar.org
+  resources:
+  - controlplanehealths/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator-namespace-reader
 rules:
 - apiGroups:
@@ -290,8 +496,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -309,8 +515,27 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
+  name: stellar-operator-control-plane-health
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: stellar-operator-control-plane-health
+subjects:
+- kind: ServiceAccount
+  name: stellar-operator
+  namespace: stellar-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator-namespace-reader
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -323,6 +548,20 @@ subjects:
 ---
 apiVersion: v1
 data:
+  cost-optimization.yaml: "resourceTracking:\n  enabled: true\n  windowSize: 336\n  headroomFactor: 1.2\nspot:\n  enabled: false\n  maxPricePerHourUsd: \"0.50\"\n  fallbackToOnDemand: true\nmonthlyBudgetUsd: 0\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 4.0.0
+    component: cost-optimization
+    helm.sh/chart: stellar-operator-4.0.0
+  name: stellar-operator-cost-optimization
+---
+apiVersion: v1
+data:
   config.yaml: "defaultResources:\n  validator:\n    requests:\n      cpu: \"250m\"\n      memory: \"512Mi\"\n    limits:\n      cpu: \"1\"\n      memory: \"2Gi\"\n  horizon:\n    requests:\n      cpu: \"250m\"\n      memory: \"512Mi\"\n    limits:\n      cpu: \"1\"\n      memory: \"2Gi\"\n  sorobanRpc:\n    requests:\n      cpu: \"500m\"\n      memory: \"1Gi\"\n    limits:\n      cpu: \"2\"\n      memory: \"4Gi\"\n"
 kind: ConfigMap
 metadata:
@@ -330,21 +569,37 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator-defaults
 ---
 apiVersion: v1
 data:
-  enable_dr: 'false'
+  rate-limiting.yaml: "distributed:\n  enabled: false\n  failOpen: true\ntiers:\n  - name: free\n    requestsPerMinute: 60\n    requestsPerHour: 1000\n    requestsPerDay: 10000\n    burst: 10\n  - name: standard\n    requestsPerMinute: 100\n    requestsPerHour: 10000\n    requestsPerDay: 100000\n    burst: 20\n  - name: premium\n    requestsPerMinute: 200\n    requestsPerHour: 20000\n    requestsPerDay: 200000\n    burst: 50\n  - name: admin\n    requestsPerMinute: 500\n    requestsPerHour: 50000\n    requestsPerDay: 500000\n    burst: 100\nendpointTiers:\n  /api/v1/debug: admin\n  /api/v1/nodes: standard\n  /health: free\n  /healthz: free\n  /livez: free\n  /metrics: free\n  /readyz: free\n"
 kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    component: api-gateway
+    helm.sh/chart: stellar-operator-4.0.0
+  name: stellar-operator-rate-limiting
+---
+apiVersion: v1
+data:
+  enable_cost_optimization: 'true'
+  enable_dr: 'false'
+  enable_rate_limiting: 'true'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator-config
   namespace: stellar-system
 ---
@@ -355,8 +610,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellarnodes.stellar.org
 spec:
   group: stellar.org
@@ -759,8 +1014,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: tenants.stellar.org
 spec:
   group: stellar.org
@@ -849,8 +1104,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: tenantusages.stellar.org
 spec:
   group: stellar.org
@@ -918,8 +1173,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator
 spec:
   replicas: 1
@@ -962,6 +1217,14 @@ spec:
           value: stellar-system
         - name: REST_API_PORT
           value: '9090'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
         image: ghcr.io/stellar/stellar-k8s:latest
         imagePullPolicy: Always
         livenessProbe:
@@ -1065,8 +1328,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator-test
   namespace: stellar-system
 spec:
@@ -1099,8 +1362,8 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator
 spec:
   ports:
@@ -1124,6 +1387,6 @@ metadata:
     app.kubernetes.io/instance: stellar-operator
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: stellar-operator
-    app.kubernetes.io/version: 0.1.0
-    helm.sh/chart: stellar-operator-0.1.0
+    app.kubernetes.io/version: 4.0.0
+    helm.sh/chart: stellar-operator-4.0.0
   name: stellar-operator

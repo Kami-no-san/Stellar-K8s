@@ -155,16 +155,16 @@ pub struct CompatibilityMatrix {
 ///
 /// Per the README prerequisites: "Kubernetes cluster (1.28+)" — however the
 /// operator also supports 1.27 for legacy compatibility.  The current CI
-/// target is 1.32 (k8s-openapi `v1_32` feature). This covers N and N-1 
+/// target is 1.32 (k8s-openapi `v1_32` feature). This covers N and N-1
 /// upstream minor versions, with N=1.32 as the latest stable release.
 pub fn supported_k8s_versions() -> Vec<K8sVersion> {
     vec![
-        K8sVersion::new(1, 27),  // Legacy support (deprecated, will be removed in v2.0)
+        K8sVersion::new(1, 27), // Legacy support (deprecated, will be removed in v2.0)
         K8sVersion::new(1, 28),
         K8sVersion::new(1, 29),
         K8sVersion::new(1, 30),
-        K8sVersion::new(1, 31),  // N-1 (previous stable)
-        K8sVersion::new(1, 32),  // N (current stable)
+        K8sVersion::new(1, 31), // N-1 (previous stable)
+        K8sVersion::new(1, 32), // N (current stable)
     ]
 }
 

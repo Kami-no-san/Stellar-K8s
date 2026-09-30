@@ -349,11 +349,12 @@ async fn tail_and_ship(
 ) -> Result<()> {
     info!(file = %log_file.display(), "Tailing log file");
 
-    let file = File::open(log_file)
-        .await
-        .map_err(|e| {
-            Error::internal_step("file io", format!("Cannot open {}: {e}", log_file.display()))
-        })?;
+    let file = File::open(log_file).await.map_err(|e| {
+        Error::internal_step(
+            "file io",
+            format!("Cannot open {}: {e}", log_file.display()),
+        )
+    })?;
 
     let mut reader = BufReader::new(file).lines();
     let mut batch = Batch::new();
