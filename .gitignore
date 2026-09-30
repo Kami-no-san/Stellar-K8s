@@ -123,3 +123,6 @@ charts/**/*.tgz
 # Local toolchain downloads
 .tools/
 
+# mkdocs build output from `make docs-build`
+/site/
+
