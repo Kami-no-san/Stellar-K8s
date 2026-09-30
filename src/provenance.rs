@@ -33,12 +33,12 @@
 //!    └──> Admit or Deny deployment
 //! ```
 
-use std::collections::{BTreeMap, HashMap};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, HashMap};
 use tracing::{debug, info, warn};
 
 use crate::error::{Error, Result};
@@ -56,7 +56,9 @@ pub const OCI_IN_TOTO_ARTIFACT_TYPE: &str = "application/vnd.in-toto+json";
 pub const OCI_COSIGN_ARTIFACT_TYPE: &str = "application/vnd.dev.cosign.artifact.sbom.v1+json";
 
 /// SLSA Level compliance requirement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 pub enum SlsaLevel {
     Level1,
     Level2,
@@ -392,7 +394,11 @@ impl ProvenanceVerifier {
 
     fn determine_slsa_level(&self, stmt: &InTotoStatement) -> SlsaLevel {
         let has_builder = !stmt.predicate.run_details.builder.id.is_empty();
-        let has_materials = !stmt.predicate.build_definition.resolved_dependencies.is_empty();
+        let has_materials = !stmt
+            .predicate
+            .build_definition
+            .resolved_dependencies
+            .is_empty();
         let has_invocation = !stmt.predicate.run_details.metadata.invocation_id.is_empty();
 
         if has_builder && has_materials && has_invocation {
@@ -570,7 +576,10 @@ mod tests {
 
         let result = verifier.verify_statement(&statement, digest);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not in allowed builder list"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not in allowed builder list"));
     }
 
     #[test]
@@ -610,7 +619,8 @@ mod tests {
             &format!("ghcr.io/otoworg/stellar-operator@{}", digest),
             None,
             &verifier
-        ).is_ok());
+        )
+        .is_ok());
     }
 
     #[test]

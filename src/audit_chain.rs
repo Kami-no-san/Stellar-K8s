@@ -38,12 +38,12 @@
 //!    └──> ChainVerificationEngine (Detects modified, deleted, or inserted records)
 //! ```
 
-use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
@@ -70,7 +70,9 @@ pub enum AuditEventType {
 }
 
 /// Severity classification of an audit event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum AuditSeverity {
     Info,
@@ -381,8 +383,8 @@ fn compute_hmac_signature(data: &str, secret_key: &str) -> String {
     use hmac::{Hmac, Mac};
     type HmacSha256 = Hmac<Sha256>;
 
-    let mut mac = HmacSha256::new_from_slice(secret_key.as_bytes())
-        .expect("HMAC can take key of any size");
+    let mut mac =
+        HmacSha256::new_from_slice(secret_key.as_bytes()).expect("HMAC can take key of any size");
     mac.update(data.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }
@@ -503,7 +505,9 @@ pub fn verify_audit_chain(
                 error_type: TamperType::PayloadMutation,
                 expected_hash: computed_hash,
                 actual_hash: record.record_hash.clone(),
-                message: "Payload mutation detected: record hash does not match computed event content".to_string(),
+                message:
+                    "Payload mutation detected: record hash does not match computed event content"
+                        .to_string(),
             });
         }
 
@@ -522,7 +526,10 @@ pub fn verify_audit_chain(
         head_hash,
         start_sequence,
         end_sequence,
-        message: format!("Successfully verified {} audit records with intact hash chain", records.len()),
+        message: format!(
+            "Successfully verified {} audit records with intact hash chain",
+            records.len()
+        ),
     })
 }
 
@@ -622,7 +629,10 @@ mod tests {
 
     #[test]
     fn test_audit_chain_append_and_verify() {
-        let mut chain = AuditChain::new("cluster-us-east-1".to_string(), Some("secret-key".to_string()));
+        let mut chain = AuditChain::new(
+            "cluster-us-east-1".to_string(),
+            Some("secret-key".to_string()),
+        );
         let e1 = sample_event("node-1", "create");
         let e2 = sample_event("node-2", "scale");
         let e3 = sample_event("node-1", "delete");

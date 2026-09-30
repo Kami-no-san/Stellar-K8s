@@ -108,7 +108,9 @@ pub struct ManualClock {
 
 impl ManualClock {
     pub fn new(start_millis: u64) -> Self {
-        Self { millis: std::sync::Mutex::new(start_millis) }
+        Self {
+            millis: std::sync::Mutex::new(start_millis),
+        }
     }
     pub fn advance(&self, millis: u64) {
         let mut g = self.millis.lock().expect("clock poisoned");
@@ -144,12 +146,19 @@ impl ConfigBundle {
     pub fn new(version: &str, settings: impl IntoIterator<Item = (String, String)>) -> Self {
         let settings: BTreeMap<String, String> = settings.into_iter().collect();
         let digest = digest_settings(&settings);
-        Self { version: version.to_string(), digest, settings }
+        Self {
+            version: version.to_string(),
+            digest,
+            settings,
+        }
     }
 
     /// Convenience constructor for the common `&[(&str, &str)]` form.
     pub fn from_pairs(version: &str, settings: &[(&str, &str)]) -> Self {
-        Self::new(version, settings.iter().map(|(k, v)| (k.to_string(), v.to_string())))
+        Self::new(
+            version,
+            settings.iter().map(|(k, v)| (k.to_string(), v.to_string())),
+        )
     }
 }
 
@@ -173,7 +182,10 @@ pub struct RolloutTarget {
 
 impl RolloutTarget {
     pub fn new(namespace: &str, node: &str) -> Self {
-        Self { namespace: namespace.to_string(), node: node.to_string() }
+        Self {
+            namespace: namespace.to_string(),
+            node: node.to_string(),
+        }
     }
 
     /// `namespace/node`, the form used in gate reports.
@@ -300,7 +312,10 @@ pub struct HealthSample {
 
 impl HealthSample {
     pub fn new(signal: &str, value: f64) -> Self {
-        Self { signal: signal.to_string(), value }
+        Self {
+            signal: signal.to_string(),
+            value,
+        }
     }
 }
 
@@ -378,7 +393,11 @@ pub trait ConfigApply: Send + Sync {
     /// Apply `bundle` to `target`. Returns the config version now in effect.
     async fn apply(&self, target: &RolloutTarget, bundle: &ConfigBundle) -> Result<String, String>;
     /// Restore the previously active bundle on `target`.
-    async fn restore(&self, target: &RolloutTarget, bundle: &ConfigBundle) -> Result<String, String>;
+    async fn restore(
+        &self,
+        target: &RolloutTarget,
+        bundle: &ConfigBundle,
+    ) -> Result<String, String>;
     /// Config version currently in effect on `target`.
     async fn current_version(&self, target: &RolloutTarget) -> Option<String>;
 }
@@ -420,20 +439,44 @@ impl ConfigApply for RecordingConfigApply {
     async fn apply(&self, target: &RolloutTarget, bundle: &ConfigBundle) -> Result<String, String> {
         self.clock_tick();
         let key = target.id();
-        self.applied.lock().expect("applied poisoned").insert(key.clone(), bundle.version.clone());
-        self.history.lock().expect("history poisoned").entry(key).or_default().push(bundle.version.clone());
+        self.applied
+            .lock()
+            .expect("applied poisoned")
+            .insert(key.clone(), bundle.version.clone());
+        self.history
+            .lock()
+            .expect("history poisoned")
+            .entry(key)
+            .or_default()
+            .push(bundle.version.clone());
         Ok(bundle.version.clone())
     }
 
-    async fn restore(&self, target: &RolloutTarget, bundle: &ConfigBundle) -> Result<String, String> {
+    async fn restore(
+        &self,
+        target: &RolloutTarget,
+        bundle: &ConfigBundle,
+    ) -> Result<String, String> {
         self.clock_tick();
-        self.applied.lock().expect("applied poisoned").insert(target.id(), bundle.version.clone());
-        self.history.lock().expect("history poisoned").entry(target.id()).or_default().push(bundle.version.clone());
+        self.applied
+            .lock()
+            .expect("applied poisoned")
+            .insert(target.id(), bundle.version.clone());
+        self.history
+            .lock()
+            .expect("history poisoned")
+            .entry(target.id())
+            .or_default()
+            .push(bundle.version.clone());
         Ok(bundle.version.clone())
     }
 
     async fn current_version(&self, target: &RolloutTarget) -> Option<String> {
-        self.applied.lock().expect("applied poisoned").get(&target.id()).cloned()
+        self.applied
+            .lock()
+            .expect("applied poisoned")
+            .get(&target.id())
+            .cloned()
     }
 }
 
@@ -628,7 +671,11 @@ impl ProgressiveConfigRollout {
     }
 
     /// Start a rollout: apply the candidate bundle to the canary subset only.
-    pub async fn start<A: ConfigApply>(&mut self, bundle: &ConfigBundle, apply: &A) -> Result<Vec<RolloutTarget>, String> {
+    pub async fn start<A: ConfigApply>(
+        &mut self,
+        bundle: &ConfigBundle,
+        apply: &A,
+    ) -> Result<Vec<RolloutTarget>, String> {
         if self.stage == RolloutStage::Canary || self.stage == RolloutStage::Propagating {
             return Err("a rollout is already in flight".to_string());
         }
@@ -669,7 +716,10 @@ impl ProgressiveConfigRollout {
         let mut verdict = GateVerdict::Passed;
 
         for gate in &self.gates {
-            let observed = samples.iter().find(|s| s.signal == gate.signal).map(|s| s.value);
+            let observed = samples
+                .iter()
+                .find(|s| s.signal == gate.signal)
+                .map(|s| s.value);
             let outcome = match observed {
                 None => GateVerdict::Incomplete,
                 Some(v) => match gate.comparator {
@@ -680,10 +730,19 @@ impl ProgressiveConfigRollout {
             };
             let detail = match observed {
                 None => format!("signal `{}` not reported by {source}", gate.signal),
-                Some(v) => format!("{signal}={v} (requires {cmp} {thr})", signal = gate.signal, cmp = gate.comparator, thr = gate.threshold),
+                Some(v) => format!(
+                    "{signal}={v} (requires {cmp} {thr})",
+                    signal = gate.signal,
+                    cmp = gate.comparator,
+                    thr = gate.threshold
+                ),
             };
             if outcome != GateVerdict::Passed {
-                verdict = if outcome == GateVerdict::Failed { GateVerdict::Failed } else { verdict };
+                verdict = if outcome == GateVerdict::Failed {
+                    GateVerdict::Failed
+                } else {
+                    verdict
+                };
                 if verdict != GateVerdict::Failed {
                     verdict = GateVerdict::Incomplete;
                 }
@@ -699,7 +758,12 @@ impl ProgressiveConfigRollout {
             });
         }
 
-        let report = GateReport { verdict, results, canary: canary_ids, evaluated_at_ms: now };
+        let report = GateReport {
+            verdict,
+            results,
+            canary: canary_ids,
+            evaluated_at_ms: now,
+        };
         self.reports.push(report.clone());
         if report.verdict == GateVerdict::Passed {
             if self.stage == RolloutStage::Canary {
@@ -707,7 +771,11 @@ impl ProgressiveConfigRollout {
                 self.events.push(RolloutEvent {
                     at_ms: now,
                     stage: RolloutStage::Propagating,
-                    version: self.pending_bundle.as_ref().map(|b| b.version.clone()).unwrap_or_default(),
+                    version: self
+                        .pending_bundle
+                        .as_ref()
+                        .map(|b| b.version.clone())
+                        .unwrap_or_default(),
                     targets: self.targets.iter().map(|t| t.id()).collect(),
                     detail: "all gates passed; propagating".to_string(),
                 });
@@ -720,7 +788,11 @@ impl ProgressiveConfigRollout {
 
     /// Roll back the canary to the previous bundle. Idempotent: calling it
     /// without an in-flight candidate is a no-op.
-    pub async fn rollback<A: ConfigApply>(&mut self, apply: &A, reason: &str) -> Result<Option<RollbackRecord>, String> {
+    pub async fn rollback<A: ConfigApply>(
+        &mut self,
+        apply: &A,
+        reason: &str,
+    ) -> Result<Option<RollbackRecord>, String> {
         let bundle = match self.pending_bundle.clone() {
             Some(b) => b,
             None => return Ok(None),
@@ -755,7 +827,11 @@ impl ProgressiveConfigRollout {
             detail: format!("rolled back in {}ms: {reason}", duration_ms),
         });
         if !record.within_sla {
-            warn!(duration_ms, sla_ms = ROLLBACK_SLA_MS, "config rollback exceeded the 30s SLA");
+            warn!(
+                duration_ms,
+                sla_ms = ROLLBACK_SLA_MS,
+                "config rollback exceeded the 30s SLA"
+            );
         }
         Ok(Some(record))
     }
@@ -772,7 +848,15 @@ impl ProgressiveConfigRollout {
         let rollback = if report.verdict == GateVerdict::Passed {
             None
         } else {
-            self.rollback(apply, &format!("gate {}: {}", report.verdict, report.failing_gates().join(", "))).await?
+            self.rollback(
+                apply,
+                &format!(
+                    "gate {}: {}",
+                    report.verdict,
+                    report.failing_gates().join(", ")
+                ),
+            )
+            .await?
         };
         Ok((report, rollback))
     }
@@ -782,7 +866,10 @@ impl ProgressiveConfigRollout {
         if self.stage != RolloutStage::Propagating {
             return Err(format!("cannot complete a rollout in stage {}", self.stage));
         }
-        let bundle = self.pending_bundle.clone().expect("propagating rollout has a bundle");
+        let bundle = self
+            .pending_bundle
+            .clone()
+            .expect("propagating rollout has a bundle");
         let now = self.clock.now_millis();
         let mut touched = Vec::new();
         for target in self.targets.clone() {
@@ -814,11 +901,20 @@ impl ProgressiveConfigRollout {
         self.versions
             .values()
             .next()
-            .map(|v| ConfigBundle { version: v.version.clone(), digest: v.digest.clone(), settings: BTreeMap::new() })
+            .map(|v| ConfigBundle {
+                version: v.version.clone(),
+                digest: v.digest.clone(),
+                settings: BTreeMap::new(),
+            })
             .unwrap_or_else(|| ConfigBundle::new(UNSET_BUNDLE_VERSION, Vec::new()))
     }
 
-    fn record_version(&mut self, target: &RolloutTarget, bundle: &ConfigBundle, status: VersionStatus) {
+    fn record_version(
+        &mut self,
+        target: &RolloutTarget,
+        bundle: &ConfigBundle,
+        status: VersionStatus,
+    ) {
         self.versions.insert(
             target.id(),
             ComponentConfigVersion {
@@ -839,7 +935,9 @@ mod tests {
     use super::*;
 
     fn targets(n: usize) -> Vec<RolloutTarget> {
-        (0..n).map(|i| RolloutTarget::new(&format!("ns-{}", i % 5), &format!("node-{i:03}"))).collect()
+        (0..n)
+            .map(|i| RolloutTarget::new(&format!("ns-{}", i % 5), &format!("node-{i:03}")))
+            .collect()
     }
 
     fn healthy() -> Vec<HealthSample> {
@@ -857,7 +955,10 @@ mod tests {
         for n in [1usize, 3, 20, 41, 100, 250, 1000] {
             let ts = targets(n);
             let canary = select_canary(&ts);
-            assert!(!canary.is_empty(), "fleet of {n} must still canary at least one node");
+            assert!(
+                !canary.is_empty(),
+                "fleet of {n} must still canary at least one node"
+            );
             // A canary is at least one node, so fleets smaller than 20 nodes
             // cannot stay under 5%; the budget is `floor(5% of fleet)`, with a
             // floor of one node.
@@ -870,7 +971,10 @@ mod tests {
                 radius * 100.0
             );
             if n >= 20 {
-                assert!(radius <= MAX_BLAST_RADIUS, "fleet of {n} exceeded the 5% blast radius");
+                assert!(
+                    radius <= MAX_BLAST_RADIUS,
+                    "fleet of {n} exceeded the 5% blast radius"
+                );
             }
         }
     }
@@ -954,11 +1058,17 @@ mod tests {
         let bad = ConfigBundle::from_pairs("2.4.0", &[("replica_count", "0")]);
         block_on(r.start(&bad, &apply)).unwrap();
         for t in r.canary().to_vec() {
-            assert_eq!(block_on(apply.current_version(&t)), Some("2.4.0".to_string()));
+            assert_eq!(
+                block_on(apply.current_version(&t)),
+                Some("2.4.0".to_string())
+            );
         }
         block_on(r.rollback(&apply, "gate failure")).unwrap();
         for t in r.canary().to_vec() {
-            assert_eq!(block_on(apply.current_version(&t)), Some("2.3.0".to_string()));
+            assert_eq!(
+                block_on(apply.current_version(&t)),
+                Some("2.3.0".to_string())
+            );
         }
     }
 
@@ -982,13 +1092,25 @@ mod tests {
             let bundle = ConfigBundle::from_pairs(version, &settings);
             let canary = block_on(r.start(&bundle, &apply)).unwrap();
             let radius = blast_radius(&ts, &canary);
-            assert!(radius <= MAX_BLAST_RADIUS, "{version} blast radius {radius}");
+            assert!(
+                radius <= MAX_BLAST_RADIUS,
+                "{version} blast radius {radius}"
+            );
             assert!(canary.len() * 3 < ts.len(), "{version} canary too wide");
 
-            let (report, rollback) = block_on(r.gate_or_rollback(&bad_samples(), "metrics", &apply)).unwrap();
-            assert_eq!(report.verdict, GateVerdict::Failed, "{version} must be caught during canary");
+            let (report, rollback) =
+                block_on(r.gate_or_rollback(&bad_samples(), "metrics", &apply)).unwrap();
+            assert_eq!(
+                report.verdict,
+                GateVerdict::Failed,
+                "{version} must be caught during canary"
+            );
             let rec = rollback.expect("rollback");
-            assert!(rec.within_sla, "{version} rollback took {}ms", rec.duration_ms);
+            assert!(
+                rec.within_sla,
+                "{version} rollback took {}ms",
+                rec.duration_ms
+            );
             assert_eq!(r.stage(), RolloutStage::RolledBack);
             // The bad config never left the canary: every target is back on
             // the good bundle, and the canary targets are marked restored.
@@ -1089,7 +1211,9 @@ mod tests {
         let clock = Arc::new(ManualClock::new(0));
         let apply = RecordingConfigApply::new(clock.clone());
         let mut r = ProgressiveConfigRollout::new(targets(10), clock);
-        assert!(block_on(r.rollback(&apply, "nothing to do")).unwrap().is_none());
+        assert!(block_on(r.rollback(&apply, "nothing to do"))
+            .unwrap()
+            .is_none());
         assert!(r.rollbacks().is_empty());
     }
 
@@ -1101,7 +1225,10 @@ mod tests {
             .with_gates(vec![HealthGate::max("disk", "disk_usage_pct", 80.0)]);
         let bundle = ConfigBundle::from_pairs("4.0.0", &[("disk", "big")]);
         block_on(r.start(&bundle, &apply)).unwrap();
-        let report = r.evaluate(&[HealthSample::new("disk_usage_pct", 95.0)], "node-exporter");
+        let report = r.evaluate(
+            &[HealthSample::new("disk_usage_pct", 95.0)],
+            "node-exporter",
+        );
         assert_eq!(report.verdict, GateVerdict::Failed);
         assert_eq!(report.failing_gates(), vec!["disk"]);
     }

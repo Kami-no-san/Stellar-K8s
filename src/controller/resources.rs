@@ -3543,25 +3543,20 @@ fn build_container(node: &StellarNode, enable_mtls: bool) -> Container {
 
     // Determine explicit container command and args for each node type.
     // These can be overridden by the user via spec.command and spec.args.
-    let (default_command, default_args): (Option<Vec<String>>, Option<Vec<String>>) = match node.spec.node_type {
-        NodeType::Validator => (
-            Some(vec![
-                "/usr/bin/stellar-core".to_string(),
-                "run".to_string(),
-                "--conf".to_string(),
-                "/config/stellar-core.cfg".to_string(),
-            ]),
-            None,
-        ),
-        NodeType::Horizon => (
-            Some(vec!["/stellar-horizon".to_string()]),
-            None,
-        ),
-        NodeType::SorobanRpc => (
-            Some(vec!["/stellar-rpc".to_string()]),
-            None,
-        ),
-    };
+    let (default_command, default_args): (Option<Vec<String>>, Option<Vec<String>>) =
+        match node.spec.node_type {
+            NodeType::Validator => (
+                Some(vec![
+                    "/usr/bin/stellar-core".to_string(),
+                    "run".to_string(),
+                    "--conf".to_string(),
+                    "/config/stellar-core.cfg".to_string(),
+                ]),
+                None,
+            ),
+            NodeType::Horizon => (Some(vec!["/stellar-horizon".to_string()]), None),
+            NodeType::SorobanRpc => (Some(vec!["/stellar-rpc".to_string()]), None),
+        };
 
     // Apply user overrides if provided
     let final_command = node.spec.command.clone().or(default_command);

@@ -53,7 +53,10 @@ pub enum WeightProgression {
     /// Linear progression: increment by fixed amount each step
     Linear { initial_weight: u32, step_size: u32 },
     /// Exponential progression: multiply weight by factor each step
-    Exponential { initial_weight: u32, multiplier: f64 },
+    Exponential {
+        initial_weight: u32,
+        multiplier: f64,
+    },
     /// Stepwise progression: jump to predefined weights
     Stepwise { steps: Vec<u32> },
 }

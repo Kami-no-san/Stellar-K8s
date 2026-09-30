@@ -216,9 +216,17 @@ impl FairShareRateLimiter {
 
         // Update tuner for adaptive behavior
         if !allowed {
-            self.tuner.write().await.record(&consumer.to_string(), true, Some(ErrorClass::RateLimit));
+            self.tuner.write().await.record(
+                &consumer.to_string(),
+                true,
+                Some(ErrorClass::RateLimit),
+            );
         } else {
-            self.tuner.write().await.record(&consumer.to_string(), false, Some(ErrorClass::Transient));
+            self.tuner.write().await.record(
+                &consumer.to_string(),
+                false,
+                Some(ErrorClass::Transient),
+            );
         }
 
         let retry_after_ms = if !allowed {
@@ -234,7 +242,8 @@ impl FairShareRateLimiter {
             retry_after_ms,
             limit: effective_capacity,
             remaining: remaining.max(0.0) as u64,
-            reset_after_ms: ((bucket.capacity as f64 - remaining) / bucket.refill_rate * 1000.0).ceil() as u64,
+            reset_after_ms: ((bucket.capacity as f64 - remaining) / bucket.refill_rate * 1000.0)
+                .ceil() as u64,
             config_version: *self.config_version.read().await,
         }
     }
@@ -255,8 +264,16 @@ impl FairShareRateLimiter {
         // If consumer has been well-behaved (low error rate), allow more burst
         let consumer_usage = usage.per_consumer.get(consumer);
         let bonus = consumer_usage.map_or(1.0, |u| {
-            let error_rate = if u.requests > 0 { u.error_count as f64 / u.requests as f64 } else { 0.0 };
-            if error_rate < 0.01 { 1.5 } else { 1.0 }
+            let error_rate = if u.requests > 0 {
+                u.error_count as f64 / u.requests as f64
+            } else {
+                0.0
+            };
+            if error_rate < 0.01 {
+                1.5
+            } else {
+                1.0
+            }
         });
 
         (share * bonus).min(self.config.max_share_per_consumer)
@@ -280,29 +297,48 @@ impl FairShareRateLimiter {
         let buckets = self.buckets.read().await;
         let usage = self.global_usage.read().await;
 
-        buckets.iter().map(|(consumer, bucket)| {
-            let u = usage.per_consumer.get(consumer).cloned().unwrap_or_default();
-            ConsumerAllocation {
-                consumer: consumer.clone(),
-                allocated_rate: bucket.refill_rate,
-                burst_capacity: bucket.capacity,
-                current_usage_rps: u.requests as f64,
-                rejection_rate: if u.requests > 0 { u.rejected as f64 / u.requests as f64 } else { 0.0 },
-            }
-        }).collect()
+        buckets
+            .iter()
+            .map(|(consumer, bucket)| {
+                let u = usage
+                    .per_consumer
+                    .get(consumer)
+                    .cloned()
+                    .unwrap_or_default();
+                ConsumerAllocation {
+                    consumer: consumer.clone(),
+                    allocated_rate: bucket.refill_rate,
+                    burst_capacity: bucket.capacity,
+                    current_usage_rps: u.requests as f64,
+                    rejection_rate: if u.requests > 0 {
+                        u.rejected as f64 / u.requests as f64
+                    } else {
+                        0.0
+                    },
+                }
+            })
+            .collect()
     }
 
     /// Compute Jain's fairness index across all consumers.
     pub async fn jain_index(&self) -> f64 {
         let usage = self.global_usage.read().await;
-        let rates: Vec<f64> = usage.per_consumer.values().map(|u| u.requests as f64).collect();
+        let rates: Vec<f64> = usage
+            .per_consumer
+            .values()
+            .map(|u| u.requests as f64)
+            .collect();
         if rates.is_empty() {
             return 1.0;
         }
         let n = rates.len() as f64;
         let sum: f64 = rates.iter().sum();
         let sum_sq: f64 = rates.iter().map(|r| r * r).sum();
-        if sum_sq == 0.0 { 1.0 } else { (sum * sum) / (n * sum_sq) }
+        if sum_sq == 0.0 {
+            1.0
+        } else {
+            (sum * sum) / (n * sum_sq)
+        }
     }
 
     /// Force config reload (e.g., from config map watcher).
@@ -310,7 +346,10 @@ impl FairShareRateLimiter {
         *self.config_version.write().await += 1;
         // Config is read on each check_limit, so just update
         // In real impl, would need ArcSwap or similar for lock-free reads
-        info!("Fair-share config reloaded (version {})", *self.config_version.read().await);
+        info!(
+            "Fair-share config reloaded (version {})",
+            *self.config_version.read().await
+        );
     }
 }
 
@@ -363,7 +402,11 @@ mod tests {
         let config = FairShareConfig::default();
         let limiter = FairShareRateLimiter::new(config);
 
-        let consumer = ConsumerId { tenant: "tenant-a".into(), workload: None, api_key_hash: None };
+        let consumer = ConsumerId {
+            tenant: "tenant-a".into(),
+            workload: None,
+            api_key_hash: None,
+        };
 
         // Should allow up to capacity
         for i in 0..50 {
@@ -392,8 +435,16 @@ mod tests {
         };
         let limiter = FairShareRateLimiter::new(config);
 
-        let c1 = ConsumerId { tenant: "tenant-a".into(), workload: None, api_key_hash: None };
-        let c2 = ConsumerId { tenant: "tenant-b".into(), workload: None, api_key_hash: None };
+        let c1 = ConsumerId {
+            tenant: "tenant-a".into(),
+            workload: None,
+            api_key_hash: None,
+        };
+        let c2 = ConsumerId {
+            tenant: "tenant-b".into(),
+            workload: None,
+            api_key_hash: None,
+        };
 
         // Both consumers should get fair share
         for _ in 0..20 {
@@ -402,7 +453,11 @@ mod tests {
         }
 
         let jain = limiter.jain_index().await;
-        assert!(jain > 0.9, "Jain index should be > 0.9 for equal consumers, got {}", jain);
+        assert!(
+            jain > 0.9,
+            "Jain index should be > 0.9 for equal consumers, got {}",
+            jain
+        );
     }
 
     #[tokio::test]
@@ -416,8 +471,16 @@ mod tests {
         };
         let limiter = FairShareRateLimiter::new(config);
 
-        let noisy = ConsumerId { tenant: "noisy".into(), workload: None, api_key_hash: None };
-        let quiet = ConsumerId { tenant: "quiet".into(), workload: None, api_key_hash: None };
+        let noisy = ConsumerId {
+            tenant: "noisy".into(),
+            workload: None,
+            api_key_hash: None,
+        };
+        let quiet = ConsumerId {
+            tenant: "quiet".into(),
+            workload: None,
+            api_key_hash: None,
+        };
 
         // Noisy consumer hammers the API
         for _ in 0..50 {
@@ -432,7 +495,11 @@ mod tests {
                 quiet_allowed += 1;
             }
         }
-        assert!(quiet_allowed >= 10, "Quiet consumer should get fair share, got {}", quiet_allowed);
+        assert!(
+            quiet_allowed >= 10,
+            "Quiet consumer should get fair share, got {}",
+            quiet_allowed
+        );
 
         // Jain index should still be reasonable
         let jain = limiter.jain_index().await;

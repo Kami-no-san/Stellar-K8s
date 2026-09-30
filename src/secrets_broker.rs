@@ -24,8 +24,8 @@
 //! zero-downtime cutover per consumer.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -85,7 +85,9 @@ impl WorkloadIdentity {
                 namespace: ns.to_string(),
                 service_account: sa.to_string(),
             }),
-            _ => Err(format!("spiffe ID must contain /ns/<ns>/sa/<sa>: {spiffe_id}")),
+            _ => Err(format!(
+                "spiffe ID must contain /ns/<ns>/sa/<sa>: {spiffe_id}"
+            )),
         }
     }
 }
@@ -222,7 +224,11 @@ impl SecretsBroker {
             renewable: true,
             generation: self.inner.generation.load(Ordering::Relaxed),
         };
-        self.inner.leases.write().await.insert(cred.lease_id.clone(), cred.clone());
+        self.inner
+            .leases
+            .write()
+            .await
+            .insert(cred.lease_id.clone(), cred.clone());
         self.inner.issued.fetch_add(1, Ordering::Relaxed);
         info!(
             lease = %cred.lease_id,
@@ -243,7 +249,9 @@ impl SecretsBroker {
         requested_ttl_secs: i64,
         static_ref: &str,
     ) -> Result<(Credential, String), String> {
-        let cred = self.issue(identity, secret_name, requested_ttl_secs).await?;
+        let cred = self
+            .issue(identity, secret_name, requested_ttl_secs)
+            .await?;
         self.inner
             .dual_writes
             .write()
@@ -255,7 +263,9 @@ impl SecretsBroker {
     /// Renew a renewable, unexpired lease. Returns the refreshed credential.
     pub async fn renew(&self, lease_id: &str) -> Result<Credential, String> {
         let mut leases = self.inner.leases.write().await;
-        let cred = leases.get_mut(lease_id).ok_or_else(|| format!("unknown lease: {lease_id}"))?;
+        let cred = leases
+            .get_mut(lease_id)
+            .ok_or_else(|| format!("unknown lease: {lease_id}"))?;
         if !cred.renewable {
             self.inner.failed.fetch_add(1, Ordering::Relaxed);
             return Err(format!("lease {lease_id} is not renewable"));
@@ -275,7 +285,9 @@ impl SecretsBroker {
     /// Fetch a live credential (failover-safe: leases survive generation bumps).
     pub async fn fetch(&self, lease_id: &str) -> Result<Credential, String> {
         let leases = self.inner.leases.read().await;
-        let cred = leases.get(lease_id).ok_or_else(|| format!("unknown lease: {lease_id}"))?;
+        let cred = leases
+            .get(lease_id)
+            .ok_or_else(|| format!("unknown lease: {lease_id}"))?;
         if cred.is_expired(Utc::now()) {
             return Err(format!("lease {lease_id} expired"));
         }
@@ -292,7 +304,11 @@ impl SecretsBroker {
 
     /// Record a static-secret read (scheduled for elimination). Returns the
     /// total static reads so far.
-    pub async fn record_static_read(&self, identity: &WorkloadIdentity, secret_name: &str) -> usize {
+    pub async fn record_static_read(
+        &self,
+        identity: &WorkloadIdentity,
+        secret_name: &str,
+    ) -> usize {
         warn!(
             workload = %identity.spiffe_id,
             secret = %secret_name,
@@ -355,7 +371,10 @@ mod tests {
     #[tokio::test]
     async fn ttl_is_capped_at_one_hour() {
         let broker = SecretsBroker::new(BrokerConfig::default());
-        let cred = broker.issue(&identity(), "db-password", 7200).await.unwrap();
+        let cred = broker
+            .issue(&identity(), "db-password", 7200)
+            .await
+            .unwrap();
         assert!(cred.ttl_secs <= MAX_CREDENTIAL_TTL_SECS);
         assert_eq!(cred.workload_spiffe, identity().spiffe_id);
     }

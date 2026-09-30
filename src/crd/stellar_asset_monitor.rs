@@ -4,7 +4,12 @@ use serde::{Deserialize, Serialize};
 
 /// Watch list for monitoring issued Stellar assets.
 #[derive(CustomResource, Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq)]
-#[kube(group = "stellar.org", version = "v1alpha1", kind = "StellarAssetMonitor", namespaced)]
+#[kube(
+    group = "stellar.org",
+    version = "v1alpha1",
+    kind = "StellarAssetMonitor",
+    namespaced
+)]
 #[serde(rename_all = "camelCase")]
 pub struct StellarAssetMonitorSpec {
     /// Whether monitoring is enabled.

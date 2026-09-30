@@ -117,19 +117,26 @@ pub async fn verify_node_boot(spec: &ExpectedImageSpec) -> NodeBootVerificationR
     checks.push(verify_denylisted_packages(spec).await);
 
     // 6. Run existing bootstrap verification (tools, docker, etc.)
-    checks.extend(run_bootstrap_verification().into_iter().map(|c| VerificationCheck {
-        name: c.name.to_string(),
-        passed: c.passed,
-        message: c.message,
-        duration_ms: 0, // bootstrap doesn't track per-check duration
-        severity: c.severity,
-    }));
+    checks.extend(
+        run_bootstrap_verification()
+            .into_iter()
+            .map(|c| VerificationCheck {
+                name: c.name.to_string(),
+                passed: c.passed,
+                message: c.message,
+                duration_ms: 0, // bootstrap doesn't track per-check duration
+                severity: c.severity,
+            }),
+    );
 
     let overall_passed = checks.iter().all(|c| c.passed);
     let total_duration_ms = start.elapsed().as_millis() as u64;
 
     NodeBootVerificationResult {
-        node_name: hostname::get().unwrap_or_default().to_string_lossy().to_string(),
+        node_name: hostname::get()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string(),
         timestamp: chrono::Utc::now().to_rfc3339(),
         overall_passed,
         total_duration_ms,
@@ -152,7 +159,10 @@ async fn verify_image_digest(spec: &ExpectedImageSpec) -> VerificationCheck {
     let message = if passed {
         format!("Image digest matches: {}", expected)
     } else {
-        format!("Image digest mismatch! Expected: {}, Got: {}", expected, actual)
+        format!(
+            "Image digest mismatch! Expected: {}, Got: {}",
+            expected, actual
+        )
     };
 
     VerificationCheck {
@@ -167,7 +177,15 @@ async fn verify_image_digest(spec: &ExpectedImageSpec) -> VerificationCheck {
 async fn read_current_image_digest() -> Option<String> {
     // Try to read from containerd's image store
     // This is a placeholder - real implementation would use CRI client
-    if let Ok(output) = Command::new("crictl").args(["inspecti", "--output", "json", "$(crictl images -q | head -1)"]).output() {
+    if let Ok(output) = Command::new("crictl")
+        .args([
+            "inspecti",
+            "--output",
+            "json",
+            "$(crictl images -q | head -1)",
+        ])
+        .output()
+    {
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             if let Some(start) = stdout.find("\"id\": \"sha256:") {
@@ -194,7 +212,10 @@ async fn verify_kernel_version(spec: &ExpectedImageSpec) -> VerificationCheck {
     let message = if passed {
         format!("Kernel version OK: {}", actual)
     } else {
-        format!("Kernel version mismatch! Expected prefix: {}, Got: {}", expected, actual)
+        format!(
+            "Kernel version mismatch! Expected prefix: {}, Got: {}",
+            expected, actual
+        )
     };
 
     VerificationCheck {
@@ -213,9 +234,11 @@ async fn verify_os_release(spec: &ExpectedImageSpec) -> VerificationCheck {
     let actual = std::fs::read_to_string("/etc/os-release")
         .ok()
         .and_then(|s| {
-            s.lines()
-                .find(|l| l.starts_with("VERSION_ID="))
-                .map(|l| l.trim_start_matches("VERSION_ID=").trim_matches('"').to_string())
+            s.lines().find(|l| l.starts_with("VERSION_ID=")).map(|l| {
+                l.trim_start_matches("VERSION_ID=")
+                    .trim_matches('"')
+                    .to_string()
+            })
         })
         .unwrap_or_default();
 
@@ -223,7 +246,10 @@ async fn verify_os_release(spec: &ExpectedImageSpec) -> VerificationCheck {
     let message = if passed {
         format!("OS release OK: {}", actual)
     } else {
-        format!("OS release mismatch! Expected: {}, Got: {}", expected, actual)
+        format!(
+            "OS release mismatch! Expected: {}, Got: {}",
+            expected, actual
+        )
     };
 
     VerificationCheck {
@@ -247,18 +273,25 @@ async fn verify_allowlisted_packages(spec: &ExpectedImageSpec) -> Vec<Verificati
         let installed_version = installed.get(pkg);
 
         let (passed, message) = match installed_version {
-            Some(v) if version_constraint.is_empty() || version_satisfies(v, version_constraint) => (
-                true,
-                format!("Package {} version {} satisfies {}", pkg, v, version_constraint),
-            ),
+            Some(v)
+                if version_constraint.is_empty() || version_satisfies(v, version_constraint) =>
+            {
+                (
+                    true,
+                    format!(
+                        "Package {} version {} satisfies {}",
+                        pkg, v, version_constraint
+                    ),
+                )
+            }
             Some(v) => (
                 false,
-                format!("Package {} version {} does not satisfy {}", pkg, v, version_constraint),
+                format!(
+                    "Package {} version {} does not satisfy {}",
+                    pkg, v, version_constraint
+                ),
             ),
-            None => (
-                false,
-                format!("Required package {} not installed", pkg),
-            ),
+            None => (false, format!("Required package {} not installed", pkg)),
         };
 
         checks.push(VerificationCheck {
@@ -270,7 +303,10 @@ async fn verify_allowlisted_packages(spec: &ExpectedImageSpec) -> Vec<Verificati
         });
     }
 
-    info!("Allowlisted package verification took {}ms", start.elapsed().as_millis());
+    info!(
+        "Allowlisted package verification took {}ms",
+        start.elapsed().as_millis()
+    );
     checks
 }
 
@@ -305,7 +341,10 @@ async fn read_installed_packages() -> HashMap<String, String> {
     let mut packages = HashMap::new();
 
     // Try rpm
-    if let Ok(output) = Command::new("rpm").args(["-qa", "--queryformat", "%{NAME} %{VERSION}-%{RELEASE}\n"]).output() {
+    if let Ok(output) = Command::new("rpm")
+        .args(["-qa", "--queryformat", "%{NAME} %{VERSION}-%{RELEASE}\n"])
+        .output()
+    {
         if output.status.success() {
             for line in String::from_utf8_lossy(&output.stdout).lines() {
                 let parts: Vec<_> = line.splitn(2, ' ').collect();
@@ -318,7 +357,10 @@ async fn read_installed_packages() -> HashMap<String, String> {
 
     // Try dpkg
     if packages.is_empty() {
-        if let Ok(output) = Command::new("dpkg-query").args(["-W", "-f=${Package} ${Version}\n"]).output() {
+        if let Ok(output) = Command::new("dpkg-query")
+            .args(["-W", "-f=${Package} ${Version}\n"])
+            .output()
+        {
             if output.status.success() {
                 for line in String::from_utf8_lossy(&output.stdout).lines() {
                     let parts: Vec<_> = line.splitn(2, ' ').collect();
@@ -360,7 +402,11 @@ fn version_satisfies(installed: &str, constraint: &str) -> bool {
 /// Generate Kubernetes node condition from verification result.
 pub fn generate_node_condition(result: &NodeBootVerificationResult) -> NodeCondition {
     let (status, reason, message) = if result.overall_passed {
-        ("True", "BootVerificationPassed", "All boot verification checks passed".to_string())
+        (
+            "True",
+            "BootVerificationPassed",
+            "All boot verification checks passed".to_string(),
+        )
     } else {
         let failed: Vec<_> = result.checks.iter().filter(|c| !c.passed).collect();
         let msg = format!("Boot verification failed: {} checks failed", failed.len());
@@ -377,7 +423,10 @@ pub fn generate_node_condition(result: &NodeBootVerificationResult) -> NodeCondi
 }
 
 /// Write verification result to a file for kubelet/node-problem-detector to pick up.
-pub fn write_verification_result(result: &NodeBootVerificationResult, path: &Path) -> std::io::Result<()> {
+pub fn write_verification_result(
+    result: &NodeBootVerificationResult,
+    path: &Path,
+) -> std::io::Result<()> {
     let json = serde_json::to_string_pretty(result)?;
     fs::write(path, json)
 }
@@ -402,7 +451,8 @@ StandardError=journal
 
 [Install]
 WantedBy=kubelet.service
-"#.to_string()
+"#
+    .to_string()
 }
 
 #[cfg(test)]
@@ -445,7 +495,10 @@ mod tests {
 
         let failed_result = NodeBootVerificationResult {
             overall_passed: false,
-            checks: vec![VerificationCheck { passed: false, ..Default::default() }],
+            checks: vec![VerificationCheck {
+                passed: false,
+                ..Default::default()
+            }],
             ..result
         };
         let condition = generate_node_condition(&failed_result);

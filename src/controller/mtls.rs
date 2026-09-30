@@ -40,11 +40,11 @@ use kube::{
     discovery::ApiResource,
     Client, Resource, ResourceExt,
 };
-use rcgen::{
-    CertificateParams, DistinguishedName, ExtendedKeyUsagePurpose, IsCa, KeyPair,
-    KeyUsagePurpose, SanType,
-};
 use rcgen::string::Ia5String;
+use rcgen::{
+    CertificateParams, DistinguishedName, ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose,
+    SanType,
+};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;

@@ -68,6 +68,7 @@ pub mod dr_policy;
 pub mod federation;
 pub mod internal_api_schema;
 pub mod job_retention;
+pub mod maintenance_plan;
 pub mod multi_region;
 pub mod progressive_delivery;
 pub mod read_replica;
@@ -75,17 +76,16 @@ pub mod schema_utils;
 pub mod secret_policy;
 pub mod seed_secret;
 pub mod service_mesh;
+pub mod stellar_asset_monitor;
 pub mod stellar_autoscaler;
 pub mod stellar_benchmark;
 pub mod stellar_federation;
 pub mod stellar_network_policy;
 mod stellar_node;
-pub mod stellar_asset_monitor;
 pub mod stellar_observability;
 pub mod stellar_performance;
 pub mod stellar_topology;
 pub mod stellar_upgrade;
-pub mod maintenance_plan;
 pub mod tenant;
 pub mod traffic_policy;
 pub mod traffic_shift_plan;
@@ -96,18 +96,18 @@ pub use tenant::{
 };
 
 // New Epic CRDs (Wave 5)
+pub mod compliance_report;
+pub mod incident;
+pub mod multisig_operation;
 pub mod service_ownership;
 pub mod stellar_aiops;
 pub mod stellar_database;
 pub mod stellar_disaster_recovery;
 pub mod stellar_gitops;
 pub mod stellar_policy_bundle;
-pub mod compliance_report;
-pub mod incident;
-pub mod multisig_operation;
-pub mod validator_score;
 pub mod stellar_registry;
 pub mod stellar_security;
+pub mod validator_score;
 
 // Issue #1577 — Webhook Event Delivery for Ledger Close Notifications
 pub mod ledger_close_webhook;
@@ -142,9 +142,18 @@ pub use internal_api_schema::{
 pub use job_retention::{
     JobRetentionPolicy, JobRetentionPolicySpec, JobRetentionPolicyStatus, ReclaimedByClass,
 };
+pub use maintenance_plan::{
+    AbortPolicy, DrainConfig, MaintenanceIntent, MaintenancePhase, MaintenancePlan,
+    MaintenancePlanSpec, MaintenancePlanStatus, MaintenanceTarget, PdbConfig, PrewarmConfig,
+    SloVerification, StallRecovery,
+};
 pub use multi_region::{
     ClusterConfig, ClusterHealthStatus, FailoverPolicy, MultiRegionConfig, MultiRegionHealthCheck,
     MultiRegionSpec, MultiRegionStatus, SecretSyncConfig,
+};
+pub use progressive_delivery::{
+    GateResult, ProgressiveDelivery, ProgressiveDeliverySpec, ProgressiveDeliveryStatus,
+    PromotionPhase, SloGate, TrafficSplit, WeightProgression,
 };
 pub use read_replica::{ReadReplicaConfig, ReadReplicaStrategy};
 pub use secret_policy::{
@@ -156,6 +165,7 @@ pub use service_mesh::{
     CircuitBreakerConfig, IstioMeshConfig, LinkerdMeshConfig, MtlsMode, RetryConfig,
     ServiceMeshConfig,
 };
+pub use stellar_asset_monitor::{AssetWatch, StellarAssetMonitor, StellarAssetMonitorSpec};
 pub use stellar_autoscaler::{
     CostAwareConfig, MetricType, PredictionModel, PredictiveScalingConfig, ScalingPolicy,
     ScalingStrategy, StellarAutoscaler, StellarAutoscalerSpec, StellarAutoscalerStatus,
@@ -183,9 +193,6 @@ pub use stellar_node::{
     BGPStatus, SnapshotBootstrapStatus, SpecValidationError, StellarNode, StellarNodeSpec,
     StellarNodeStatus,
 };
-pub use stellar_asset_monitor::{
-    AssetWatch, StellarAssetMonitor, StellarAssetMonitorSpec,
-};
 pub use stellar_observability::{
     AlertRule, AlertingConfig, AnomalyDetectionConfig, AnomalyModel, AnomalySensitivity,
     LoggingBackend, LoggingConfig, StellarObservability, StellarObservabilitySpec,
@@ -202,18 +209,9 @@ pub use stellar_upgrade::{
     CanaryStrategy as UpgradeCanaryStrategy, HealthValidation, RollbackPolicy, StellarUpgrade,
     StellarUpgradeSpec, StellarUpgradeStatus, UpgradePhase,
 };
-pub use maintenance_plan::{
-    AbortPolicy, DrainConfig, MaintenanceIntent, MaintenancePhase, MaintenancePlan,
-    MaintenancePlanSpec, MaintenancePlanStatus, MaintenanceTarget, PdbConfig, PrewarmConfig,
-    SloVerification, StallRecovery,
-};
 pub use traffic_policy::{
     AdaptiveRateLimitPolicy, CircuitBreakerPolicy, LeakyBucketPolicy, PriorityRule, QosClassPolicy,
     TokenBucketPolicy, TrafficPolicy, TrafficPolicySpec, TrafficPolicyStatus, TrafficPriorityClass,
-};
-pub use progressive_delivery::{
-    GateResult, ProgressiveDelivery, ProgressiveDeliverySpec, ProgressiveDeliveryStatus,
-    PromotionPhase, SloGate, TrafficSplit, WeightProgression,
 };
 pub use traffic_shift_plan::{
     AppliedGate, FailbackPolicy, FailoverTargets, FailoverTrigger, GateDecision, HealthGateSpec,
@@ -250,10 +248,10 @@ pub use stellar_policy_bundle::{
     StellarPolicyBundleStatus,
 };
 pub use stellar_registry::{
-    AdmissionPolicy, AutoPatchConfig, ComplianceReport as RegistryComplianceReport, GarbageCollectionConfig, MirrorStatus,
-    RegistryMirror, RegistryPhase, RegistryProxyConfig, ScannerBackend, ScanningConfig,
-    SigningConfig, StellarRegistry, StellarRegistrySpec, StellarRegistryStatus,
-    VulnerabilitySummary,
+    AdmissionPolicy, AutoPatchConfig, ComplianceReport as RegistryComplianceReport,
+    GarbageCollectionConfig, MirrorStatus, RegistryMirror, RegistryPhase, RegistryProxyConfig,
+    ScannerBackend, ScanningConfig, SigningConfig, StellarRegistry, StellarRegistrySpec,
+    StellarRegistryStatus, VulnerabilitySummary,
 };
 pub use stellar_security::{
     AutomatedScanningConfig, ComplianceFramework, ComplianceStatus as SecurityComplianceStatus,
@@ -263,10 +261,6 @@ pub use stellar_security::{
 };
 
 // Issue #1577 — Ledger-Close Webhook CRD exports
-pub use ledger_close_webhook::{
-    DeliveryLogEntry, DeliveryPhase, LedgerCloseEventType, LedgerClosePayload,
-    LedgerCloseWebhook, LedgerCloseWebhookSpec, LedgerCloseWebhookStatus,
-};
 pub use compliance_report::{
     ComplianceCondition, ComplianceReport, ComplianceReportFormat, ComplianceReportPhase,
     ComplianceReportSpec, ComplianceReportStatus, GeneratedArtifactRef, HsmKmsVerificationSpec,
@@ -274,8 +268,13 @@ pub use compliance_report::{
 };
 pub use incident::{
     AlertChannelConfig, AlertChannelType, AlertDispatchResult, Incident, IncidentPhase,
-    IncidentSeverity as NetworkIncidentSeverity, IncidentSpec, IncidentStatus as NetworkIncidentStatus,
-    IncidentTimelineEntry, IncidentType, PartitionDetails, QuorumAdjustmentRecommendation,
+    IncidentSeverity as NetworkIncidentSeverity, IncidentSpec,
+    IncidentStatus as NetworkIncidentStatus, IncidentTimelineEntry, IncidentType, PartitionDetails,
+    QuorumAdjustmentRecommendation,
+};
+pub use ledger_close_webhook::{
+    DeliveryLogEntry, DeliveryPhase, LedgerCloseEventType, LedgerClosePayload, LedgerCloseWebhook,
+    LedgerCloseWebhookSpec, LedgerCloseWebhookStatus,
 };
 pub use multisig_operation::{
     AdminOperationType, CollectedSignature, MultiSigAuditEntry, MultiSigCondition,
@@ -287,4 +286,3 @@ pub use validator_score::{
     ValidatorLeaderboard, ValidatorLeaderboardSpec, ValidatorLeaderboardStatus, ValidatorScore,
     ValidatorScoreSpec, ValidatorScoreStatus,
 };
-

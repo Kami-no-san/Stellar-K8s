@@ -1117,4 +1117,3 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
         assert_eq!(state.next_reconcile_id(), 102);
     }
 }
-

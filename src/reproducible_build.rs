@@ -100,7 +100,13 @@ impl ArtifactOutput {
     pub fn new(name: &str, kind: ArtifactKind, bytes: Vec<u8>) -> Self {
         let digest = sha256_hex(&bytes);
         let len = bytes.len();
-        Self { name: name.to_string(), kind, digest, len, bytes }
+        Self {
+            name: name.to_string(),
+            kind,
+            digest,
+            len,
+            bytes,
+        }
     }
 
     /// The fingerprint used for bit-for-bit comparison.
@@ -199,7 +205,9 @@ pub fn detect_nondeterminism(bytes: &[u8]) -> Vec<NondeterminismSource> {
         push(NondeterminismSource::Timestamps);
     }
 
-    if is_match(r"[A-Za-z]:\\\\?[A-Za-z0-9_\\.-]{3,}") || is_match(r"/(home|Users|builds?)/[A-Za-z0-9_.-]+/") {
+    if is_match(r"[A-Za-z]:\\\\?[A-Za-z0-9_\\.-]{3,}")
+        || is_match(r"/(home|Users|builds?)/[A-Za-z0-9_.-]+/")
+    {
         push(NondeterminismSource::PathPrefix);
     }
 
@@ -239,7 +247,12 @@ fn has_archive_metadata(bytes: &[u8]) -> bool {
         }
     }
     // zip local file header: PK\x03\x04 with a non-zero dos time/date
-    if bytes.len() > 30 && bytes[0] == 0x50 && bytes[1] == 0x4b && bytes[2] == 0x03 && bytes[3] == 0x04 {
+    if bytes.len() > 30
+        && bytes[0] == 0x50
+        && bytes[1] == 0x4b
+        && bytes[2] == 0x03
+        && bytes[3] == 0x04
+    {
         let dos_time = u16::from_le_bytes([bytes[10], bytes[11]]);
         let dos_date = u16::from_le_bytes([bytes[12], bytes[13]]);
         if dos_time != 0 || dos_date != 0 {
@@ -285,7 +298,11 @@ pub struct BuildStep {
 
 impl BuildStep {
     pub fn new(name: &str) -> Self {
-        Self { name: name.to_string(), env: BTreeMap::new(), outputs: Vec::new() }
+        Self {
+            name: name.to_string(),
+            env: BTreeMap::new(),
+            outputs: Vec::new(),
+        }
     }
 
     pub fn with_env(mut self, key: &str, value: &str) -> Self {
@@ -308,7 +325,11 @@ impl BuildStep {
                 .map(|v| v == "C" || v == "C.UTF-8")
                 .unwrap_or(false),
             path_pinned: self.env.contains_key("BUILD_PATH_PREFIX"),
-            strip_absolute_paths: self.env.get("RUSTFLAGS").map(|v| v.contains("--remap-path-prefix")).unwrap_or(false),
+            strip_absolute_paths: self
+                .env
+                .get("RUSTFLAGS")
+                .map(|v| v.contains("--remap-path-prefix"))
+                .unwrap_or(false),
         }
     }
 }
@@ -326,7 +347,9 @@ impl DeterminismFlags {
     /// Knobs implied by a given non-determinism source being pinned.
     pub fn pins(&self, source: NondeterminismSource) -> bool {
         match source {
-            NondeterminismSource::Timestamps | NondeterminismSource::ArchiveMetadata => self.source_date_epoch,
+            NondeterminismSource::Timestamps | NondeterminismSource::ArchiveMetadata => {
+                self.source_date_epoch
+            }
             NondeterminismSource::PathPrefix => self.path_pinned || self.strip_absolute_paths,
             NondeterminismSource::Locale => self.locale_pinned,
             _ => false,
@@ -354,7 +377,12 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub fn release(name: &str, runner: &str, revision: &str) -> Self {
-        Self { name: name.to_string(), runner: runner.to_string(), revision: revision.to_string(), independent_rebuild: false }
+        Self {
+            name: name.to_string(),
+            runner: runner.to_string(),
+            revision: revision.to_string(),
+            independent_rebuild: false,
+        }
     }
     pub fn rebuild(name: &str, runner: &str, revision: &str) -> Self {
         Self {
@@ -369,7 +397,10 @@ impl Pipeline {
 /// Verifies that the rebuild pipeline really is independent.
 pub fn assert_independent(release: &Pipeline, rebuild: &Pipeline) -> Result<(), String> {
     if !rebuild.independent_rebuild {
-        return Err(format!("pipeline `{}` is not flagged as an independent rebuild", rebuild.name));
+        return Err(format!(
+            "pipeline `{}` is not flagged as an independent rebuild",
+            rebuild.name
+        ));
     }
     if release.name == rebuild.name {
         return Err("rebuild pipeline must not reuse the release pipeline".to_string());
@@ -470,13 +501,19 @@ pub fn localize_mismatches(
         seen.push(fp.name.clone());
         let rebuilt = rebuild.iter().find(|r| r.name == fp.name);
         let (step_index, output) = locate(&fp.name);
-        let step_name = steps.get(step_index).map(|s| s.name.clone()).unwrap_or_else(|| "<unlocated>".to_string());
-        let flags = steps.get(step_index).map(|s| s.determinism_flags()).unwrap_or(DeterminismFlags {
-            source_date_epoch: false,
-            locale_pinned: false,
-            path_pinned: false,
-            strip_absolute_paths: false,
-        });
+        let step_name = steps
+            .get(step_index)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| "<unlocated>".to_string());
+        let flags = steps
+            .get(step_index)
+            .map(|s| s.determinism_flags())
+            .unwrap_or(DeterminismFlags {
+                source_date_epoch: false,
+                locale_pinned: false,
+                path_pinned: false,
+                strip_absolute_paths: false,
+            });
 
         match rebuilt {
             None => out.push(LocalizedMismatch {
@@ -488,7 +525,10 @@ pub fn localize_mismatches(
                 first_diff_offset: None,
                 sources: Vec::new(),
                 unpinned: Vec::new(),
-                detail: format!("`{}` produced by step `{}` was not produced by the rebuild", fp.name, step_name),
+                detail: format!(
+                    "`{}` produced by step `{}` was not produced by the rebuild",
+                    fp.name, step_name
+                ),
             }),
             Some(r) if r.digest != fp.digest => {
                 // Scan the rebuilt bytes: they are what actually drifted.
@@ -498,10 +538,20 @@ pub fn localize_mismatches(
                 let detail = format!(
                     "`{}` differs at byte {}; sources [{}]; step `{}` does not pin [{}]",
                     fp.name,
-                    offset.map(|o| o.to_string()).unwrap_or_else(|| "n/a".to_string()),
-                    sources.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
+                    offset
+                        .map(|o| o.to_string())
+                        .unwrap_or_else(|| "n/a".to_string()),
+                    sources
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
                     step_name,
-                    unpinned.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ")
+                    unpinned
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
                 out.push(LocalizedMismatch {
                     artifact: fp.name.clone(),
@@ -522,7 +572,10 @@ pub fn localize_mismatches(
     for r in rebuild {
         if !seen.contains(&r.name) {
             let (step_index, _) = locate(&r.name);
-            let step_name = steps.get(step_index).map(|s| s.name.clone()).unwrap_or_else(|| "<unlocated>".to_string());
+            let step_name = steps
+                .get(step_index)
+                .map(|s| s.name.clone())
+                .unwrap_or_else(|| "<unlocated>".to_string());
             out.push(LocalizedMismatch {
                 artifact: r.name.clone(),
                 kind: r.kind,
@@ -532,12 +585,19 @@ pub fn localize_mismatches(
                 first_diff_offset: None,
                 sources: detect_nondeterminism(&r.bytes),
                 unpinned: Vec::new(),
-                detail: format!("rebuild produced `{}` which the release build did not (step `{}`)", r.name, step_name),
+                detail: format!(
+                    "rebuild produced `{}` which the release build did not (step `{}`)",
+                    r.name, step_name
+                ),
             });
         }
     }
 
-    out.sort_by(|a, b| a.step_index.cmp(&b.step_index).then(a.artifact.cmp(&b.artifact)));
+    out.sort_by(|a, b| {
+        a.step_index
+            .cmp(&b.step_index)
+            .then(a.artifact.cmp(&b.artifact))
+    });
     out
 }
 
@@ -594,7 +654,10 @@ impl ReleaseVerification {
     pub fn badge(&self) -> String {
         format!(
             "reproducibility: {} ({}/{} artifacts, {:.0}%)",
-            self.verdict, self.reproducible, self.artifacts_checked, self.reproducible_rate * 100.0
+            self.verdict,
+            self.reproducible,
+            self.artifacts_checked,
+            self.reproducible_rate * 100.0
         )
     }
 
@@ -614,8 +677,14 @@ impl ReleaseVerification {
                     m.kind,
                     m.mismatch,
                     m.step,
-                    m.first_diff_offset.map(|o| o.to_string()).unwrap_or_else(|| "-".to_string()),
-                    m.sources.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ")
+                    m.first_diff_offset
+                        .map(|o| o.to_string())
+                        .unwrap_or_else(|| "-".to_string()),
+                    m.sources
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ));
             }
         }
@@ -643,7 +712,11 @@ pub fn verify_release(
         return Err("release has no artifacts to verify".to_string());
     }
     let mismatches = localize_mismatches(steps, &release_outputs, &rebuild_outputs);
-    let reproducible = release_outputs.len() - mismatches.iter().filter(|m| m.mismatch != MismatchKind::Unexpected).count();
+    let reproducible = release_outputs.len()
+        - mismatches
+            .iter()
+            .filter(|m| m.mismatch != MismatchKind::Unexpected)
+            .count();
     let rate = reproducible as f64 / release_outputs.len() as f64;
     let verdict = if mismatches.is_empty() {
         ReproducibilityVerdict::Reproducible
@@ -684,7 +757,11 @@ pub fn verify_release(
 pub fn verify_releases(reports: &[ReleaseVerification]) -> (usize, usize, f64) {
     let total: usize = reports.iter().map(|r| r.artifacts_checked).sum();
     let ok: usize = reports.iter().map(|r| r.reproducible).sum();
-    let rate = if total == 0 { 0.0 } else { ok as f64 / total as f64 };
+    let rate = if total == 0 {
+        0.0
+    } else {
+        ok as f64 / total as f64
+    };
     (ok, total, rate)
 }
 
@@ -748,17 +825,25 @@ mod tests {
     #[test]
     fn mismatch_localizes_to_the_emitting_build_step() {
         let steps = vec![
-            step_pinned("cargo-build").with_output(out("stellar-operator", ArtifactKind::Binary, b"ELF".to_vec())),
+            step_pinned("cargo-build").with_output(out(
+                "stellar-operator",
+                ArtifactKind::Binary,
+                b"ELF".to_vec(),
+            )),
             step_unpinned("image-build").with_output(out(
                 "operator-image",
                 ArtifactKind::ContainerImage,
                 b"layer built=2026-01-02T03:04:05Z at C:\\build\\stage2".to_vec(),
             )),
         ];
-        let release: Vec<ArtifactFingerprint> =
-            steps.iter().flat_map(|s| s.outputs.iter().map(ArtifactOutput::fingerprint)).collect();
-        let mut rebuild: Vec<ArtifactOutput> =
-            steps.iter().flat_map(|s| s.outputs.iter().cloned()).collect();
+        let release: Vec<ArtifactFingerprint> = steps
+            .iter()
+            .flat_map(|s| s.outputs.iter().map(ArtifactOutput::fingerprint))
+            .collect();
+        let mut rebuild: Vec<ArtifactOutput> = steps
+            .iter()
+            .flat_map(|s| s.outputs.iter().cloned())
+            .collect();
         // Only the image differs between builds.
         let rebuilt_image = ArtifactOutput::new(
             "operator-image",
@@ -784,13 +869,20 @@ mod tests {
 
     #[test]
     fn missing_and_unexpected_artifacts_are_reported() {
-        let steps = vec![step_pinned("cargo-build").with_output(out("a", ArtifactKind::Binary, b"a".to_vec()))];
-        let release = vec![steps[0].outputs[0].fingerprint(), ArtifactFingerprint {
-            name: "sbom".to_string(),
-            kind: ArtifactKind::Sbom,
-            digest: sha256_hex(b"sbom"),
-            len: 4,
-        }];
+        let steps = vec![step_pinned("cargo-build").with_output(out(
+            "a",
+            ArtifactKind::Binary,
+            b"a".to_vec(),
+        ))];
+        let release = vec![
+            steps[0].outputs[0].fingerprint(),
+            ArtifactFingerprint {
+                name: "sbom".to_string(),
+                kind: ArtifactKind::Sbom,
+                digest: sha256_hex(b"sbom"),
+                len: 4,
+            },
+        ];
         let rebuild = vec![steps[0].outputs[0].clone()];
         let m = localize_mismatches(&steps, &release, &rebuild);
         assert_eq!(m.len(), 1);
@@ -800,9 +892,20 @@ mod tests {
 
     #[test]
     fn unexpected_artifact_is_reported_even_though_it_is_new() {
-        let steps = vec![step_pinned("cargo-build").with_output(out("bin", ArtifactKind::Binary, b"payload".to_vec()))];
-        let release: Vec<ArtifactFingerprint> = steps[0].outputs.iter().map(ArtifactOutput::fingerprint).collect();
-        let rebuild = vec![steps[0].outputs[0].clone(), out("stray.log", ArtifactKind::Sbom, b"extra".to_vec())];
+        let steps = vec![step_pinned("cargo-build").with_output(out(
+            "bin",
+            ArtifactKind::Binary,
+            b"payload".to_vec(),
+        ))];
+        let release: Vec<ArtifactFingerprint> = steps[0]
+            .outputs
+            .iter()
+            .map(ArtifactOutput::fingerprint)
+            .collect();
+        let rebuild = vec![
+            steps[0].outputs[0].clone(),
+            out("stray.log", ArtifactKind::Sbom, b"extra".to_vec()),
+        ];
         let m = localize_mismatches(&steps, &release, &rebuild);
         assert_eq!(m.len(), 1);
         assert_eq!(m[0].mismatch, MismatchKind::Unexpected);
@@ -812,12 +915,25 @@ mod tests {
     #[test]
     fn identical_builds_produce_no_mismatches() {
         let steps = vec![
-            step_pinned("cargo-build").with_output(out("bin", ArtifactKind::Binary, b"payload".to_vec())),
-            step_pinned("chart").with_output(out("chart", ArtifactKind::HelmChart, b"chart-bytes".to_vec())),
+            step_pinned("cargo-build").with_output(out(
+                "bin",
+                ArtifactKind::Binary,
+                b"payload".to_vec(),
+            )),
+            step_pinned("chart").with_output(out(
+                "chart",
+                ArtifactKind::HelmChart,
+                b"chart-bytes".to_vec(),
+            )),
         ];
-        let fps: Vec<ArtifactFingerprint> =
-            steps.iter().flat_map(|s| s.outputs.iter().map(ArtifactOutput::fingerprint)).collect();
-        let outputs: Vec<ArtifactOutput> = steps.iter().flat_map(|s| s.outputs.iter().cloned()).collect();
+        let fps: Vec<ArtifactFingerprint> = steps
+            .iter()
+            .flat_map(|s| s.outputs.iter().map(ArtifactOutput::fingerprint))
+            .collect();
+        let outputs: Vec<ArtifactOutput> = steps
+            .iter()
+            .flat_map(|s| s.outputs.iter().cloned())
+            .collect();
         assert!(localize_mismatches(&steps, &fps, &outputs).is_empty());
     }
 
@@ -831,7 +947,9 @@ mod tests {
 
         let same = Pipeline::release("release", "gh-runner-linux-8", "abc123");
         assert!(assert_independent(&release, &same).is_err());
-        assert!(assert_independent(&release, &Pipeline::release("release", "x", "def456")).is_err());
+        assert!(
+            assert_independent(&release, &Pipeline::release("release", "x", "def456")).is_err()
+        );
     }
 
     // -- release verification ---------------------------------------------
@@ -840,27 +958,57 @@ mod tests {
     /// the OLM bundle. The non-deterministic variant leaves `crd-gen` unpinned.
     fn full_pipeline(deterministic: bool) -> Vec<BuildStep> {
         let crd_gen = if deterministic {
-            step_pinned("crd-gen").with_output(out("crds", ArtifactKind::CrdBundle, b"crd-yaml".to_vec()))
+            step_pinned("crd-gen").with_output(out(
+                "crds",
+                ArtifactKind::CrdBundle,
+                b"crd-yaml".to_vec(),
+            ))
         } else {
-            step_unpinned("crd-gen").with_output(out("crds", ArtifactKind::CrdBundle, b"crd changed".to_vec()))
+            step_unpinned("crd-gen").with_output(out(
+                "crds",
+                ArtifactKind::CrdBundle,
+                b"crd changed".to_vec(),
+            ))
         };
         vec![
             step_pinned("cargo-build")
-                .with_output(out("stellar-operator", ArtifactKind::Binary, b"elf-bytes".to_vec()))
-                .with_output(out("stellar-sidecar", ArtifactKind::Binary, b"sidecar-bytes".to_vec())),
+                .with_output(out(
+                    "stellar-operator",
+                    ArtifactKind::Binary,
+                    b"elf-bytes".to_vec(),
+                ))
+                .with_output(out(
+                    "stellar-sidecar",
+                    ArtifactKind::Binary,
+                    b"sidecar-bytes".to_vec(),
+                )),
             crd_gen,
-            step_pinned("helm-package").with_output(out("chart", ArtifactKind::HelmChart, b"chart".to_vec())),
+            step_pinned("helm-package").with_output(out(
+                "chart",
+                ArtifactKind::HelmChart,
+                b"chart".to_vec(),
+            )),
             step_pinned("sbom").with_output(out("sbom", ArtifactKind::Sbom, b"sbom".to_vec())),
-            step_pinned("bundle").with_output(out("olm", ArtifactKind::OperatorBundle, b"olm".to_vec())),
+            step_pinned("bundle").with_output(out(
+                "olm",
+                ArtifactKind::OperatorBundle,
+                b"olm".to_vec(),
+            )),
         ]
     }
 
     fn fingerprints(steps: &[BuildStep]) -> Vec<ArtifactFingerprint> {
-        steps.iter().flat_map(|s| s.outputs.iter().map(ArtifactOutput::fingerprint)).collect()
+        steps
+            .iter()
+            .flat_map(|s| s.outputs.iter().map(ArtifactOutput::fingerprint))
+            .collect()
     }
 
     fn outputs(steps: &[BuildStep]) -> Vec<ArtifactOutput> {
-        steps.iter().flat_map(|s| s.outputs.iter().cloned()).collect()
+        steps
+            .iter()
+            .flat_map(|s| s.outputs.iter().cloned())
+            .collect()
     }
 
     #[test]
@@ -880,12 +1028,17 @@ mod tests {
         // 20 artifacts, 1 drifts -> exactly 95%, still at the bar.
         let mut step = step_unpinned("crd-gen");
         for i in 0..20 {
-            step = step.with_output(out(&format!("crd-{i:02}"), ArtifactKind::CrdBundle, format!("crd-{i}").into_bytes()));
+            step = step.with_output(out(
+                &format!("crd-{i:02}"),
+                ArtifactKind::CrdBundle,
+                format!("crd-{i}").into_bytes(),
+            ));
         }
         let steps = vec![step];
         let mut rebuild = outputs(&steps);
         let index = rebuild.iter().position(|f| f.name == "crd-07").unwrap();
-        rebuild[index] = ArtifactOutput::new("crd-07", ArtifactKind::CrdBundle, b"different".to_vec());
+        rebuild[index] =
+            ArtifactOutput::new("crd-07", ArtifactKind::CrdBundle, b"different".to_vec());
         let r = verify_release("v2.6.1", &steps, fingerprints(&steps), rebuild).unwrap();
         assert_eq!(r.verdict, ReproducibilityVerdict::MostlyReproducible);
         assert!((r.reproducible_rate - 0.95).abs() < 1e-9);
@@ -928,7 +1081,8 @@ mod tests {
             } else {
                 clean.clone()
             };
-            reports.push(verify_release(&format!("v2.6.{i}"), &steps, good.clone(), rebuild).unwrap());
+            reports
+                .push(verify_release(&format!("v2.6.{i}"), &steps, good.clone(), rebuild).unwrap());
         }
         let (ok, total, rate) = verify_releases(&reports);
         // Six artifacts per release across ten releases, one artifact drifted.
@@ -951,11 +1105,20 @@ mod tests {
     #[test]
     fn determinism_flags_report_unpinned_sources() {
         let pinned = step_pinned("s").determinism_flags();
-        assert_eq!(pinned.missing_for(&[NondeterminismSource::Timestamps]), Vec::new());
+        assert_eq!(
+            pinned.missing_for(&[NondeterminismSource::Timestamps]),
+            Vec::new()
+        );
         let unpinned = step_unpinned("s").determinism_flags();
         assert_eq!(
-            unpinned.missing_for(&[NondeterminismSource::Timestamps, NondeterminismSource::PathPrefix]),
-            vec![NondeterminismSource::Timestamps, NondeterminismSource::PathPrefix]
+            unpinned.missing_for(&[
+                NondeterminismSource::Timestamps,
+                NondeterminismSource::PathPrefix
+            ]),
+            vec![
+                NondeterminismSource::Timestamps,
+                NondeterminismSource::PathPrefix
+            ]
         );
     }
 }

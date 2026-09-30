@@ -823,7 +823,9 @@ pub async fn monitoring_status(
 
 /// GET /api/v1/validators/leaderboard
 pub async fn get_validator_leaderboard(
-    axum::extract::State(state): axum::extract::State<Arc<crate::controller::reconciler::ControllerState>>,
+    axum::extract::State(state): axum::extract::State<
+        Arc<crate::controller::reconciler::ControllerState>,
+    >,
 ) -> Json<serde_json::Value> {
     use kube::api::ListParams;
     let board_api: Api<crate::crd::ValidatorLeaderboard> = Api::all(state.client.clone());
@@ -873,4 +875,3 @@ pub async fn get_validator_leaderboard(
         "entries": entries,
     }))
 }
-

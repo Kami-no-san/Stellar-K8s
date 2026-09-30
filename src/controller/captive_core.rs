@@ -114,7 +114,9 @@ impl CaptiveCoreConfigBuilder {
     /// Create builder for Horizon captive core ingestion
     pub fn from_horizon_node_config(node: &StellarNode) -> Result<Self> {
         let horizon_config = node.spec.horizon_config.as_ref().ok_or_else(|| {
-            Error::ConfigError("HorizonConfig is required for captive core configuration".to_string())
+            Error::ConfigError(
+                "HorizonConfig is required for captive core configuration".to_string(),
+            )
         })?;
 
         if let Some(ref soroban_config) = node.spec.soroban_config {
@@ -137,7 +139,9 @@ impl CaptiveCoreConfigBuilder {
 
         Ok(Self {
             network_passphrase,
-            history_archive_urls: vec!["https://history.stellar.org/prd/core-live/core_live_001".to_string()],
+            history_archive_urls: vec![
+                "https://history.stellar.org/prd/core-live/core_live_001".to_string()
+            ],
             peer_port: DEFAULT_PEER_PORT,
             http_port: DEFAULT_HTTP_PORT,
             log_level: DEFAULT_LOG_LEVEL.to_string(),

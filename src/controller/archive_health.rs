@@ -456,7 +456,9 @@ pub async fn check_archives_version_compatibility(
         let url = url.clone();
         let core_ver = core_version.to_string();
         async move {
-            match check_single_archive_version_compatibility(&client, &url, &core_ver, timeout).await {
+            match check_single_archive_version_compatibility(&client, &url, &core_ver, timeout)
+                .await
+            {
                 Ok(res) => res,
                 Err(e) => ArchiveVersionCompatibility {
                     url: url.clone(),

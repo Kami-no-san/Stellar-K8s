@@ -273,9 +273,7 @@ async fn peers_handler(State(state): State<HealthCheckState>) -> impl IntoRespon
     (code, Json(body))
 }
 
-async fn archive_compatibility_handler(
-    State(state): State<HealthCheckState>,
-) -> impl IntoResponse {
+async fn archive_compatibility_handler(State(state): State<HealthCheckState>) -> impl IntoResponse {
     let sync_status = state.sync_status.read().await;
     (
         if sync_status.archive_compatible {
@@ -323,12 +321,13 @@ pub async fn sync_monitor_loop(state: HealthCheckState) {
     loop {
         // 1. Check archive version compatibility if archives are configured
         if !state.archive_urls.is_empty() {
-            let compat_results = crate::controller::archive_health::check_archives_version_compatibility(
-                &state.archive_urls,
-                &state.core_version,
-                Some(std::time::Duration::from_secs(5)),
-            )
-            .await;
+            let compat_results =
+                crate::controller::archive_health::check_archives_version_compatibility(
+                    &state.archive_urls,
+                    &state.core_version,
+                    Some(std::time::Duration::from_secs(5)),
+                )
+                .await;
 
             let mut sync_status = state.sync_status.write().await;
             if let Some(incompat) = compat_results.iter().find(|r| !r.is_compatible) {
