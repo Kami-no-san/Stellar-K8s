@@ -53,9 +53,21 @@ impl BurnThresholds {
         match tier {
             // Critical services roll back aggressively; standard services
             // tolerate more burn to keep the false-rollback rate < 1%.
-            ServiceTier::Critical => Self { fast_burn: 6.0, slow_burn: 2.0, min_budget_consumed: 0.05 },
-            ServiceTier::High => Self { fast_burn: 10.0, slow_burn: 3.0, min_budget_consumed: 0.10 },
-            ServiceTier::Standard => Self { fast_burn: 14.0, slow_burn: 4.0, min_budget_consumed: 0.15 },
+            ServiceTier::Critical => Self {
+                fast_burn: 6.0,
+                slow_burn: 2.0,
+                min_budget_consumed: 0.05,
+            },
+            ServiceTier::High => Self {
+                fast_burn: 10.0,
+                slow_burn: 3.0,
+                min_budget_consumed: 0.10,
+            },
+            ServiceTier::Standard => Self {
+                fast_burn: 14.0,
+                slow_burn: 4.0,
+                min_budget_consumed: 0.15,
+            },
         }
     }
 }
@@ -123,9 +135,18 @@ impl RollbackDecision {
     /// Serialize the rationale block stored on the deployment record.
     pub fn record_annotation(&self) -> HashMap<String, String> {
         HashMap::from([
-            ("stellar.org/rollback-verdict".to_string(), format!("{:?}", self.verdict)),
-            ("stellar.org/rollback-rationale".to_string(), self.rationale.clone()),
-            ("stellar.org/rollback-evaluated-at".to_string(), self.evaluated_at.to_rfc3339()),
+            (
+                "stellar.org/rollback-verdict".to_string(),
+                format!("{:?}", self.verdict),
+            ),
+            (
+                "stellar.org/rollback-rationale".to_string(),
+                self.rationale.clone(),
+            ),
+            (
+                "stellar.org/rollback-evaluated-at".to_string(),
+                self.evaluated_at.to_rfc3339(),
+            ),
         ])
     }
 }
@@ -182,9 +203,18 @@ impl RollbackEngine {
     pub fn new() -> Self {
         Self {
             thresholds: HashMap::from([
-                (ServiceTier::Critical, BurnThresholds::for_tier(ServiceTier::Critical)),
-                (ServiceTier::High, BurnThresholds::for_tier(ServiceTier::High)),
-                (ServiceTier::Standard, BurnThresholds::for_tier(ServiceTier::Standard)),
+                (
+                    ServiceTier::Critical,
+                    BurnThresholds::for_tier(ServiceTier::Critical),
+                ),
+                (
+                    ServiceTier::High,
+                    BurnThresholds::for_tier(ServiceTier::High),
+                ),
+                (
+                    ServiceTier::Standard,
+                    BurnThresholds::for_tier(ServiceTier::Standard),
+                ),
             ]),
             decisions: Vec::new(),
             analyses: Vec::new(),
@@ -199,11 +229,19 @@ impl RollbackEngine {
     /// Evaluate one observation. Rollback requires short AND long windows to
     /// breach plus minimum budget consumption (multi-window burn-rate gate).
     pub fn evaluate(&mut self, obs: &BurnObservation) -> RollbackDecision {
-        let t = self.thresholds.get(&obs.tier).cloned().unwrap_or_else(|| BurnThresholds::for_tier(obs.tier));
+        let t = self
+            .thresholds
+            .get(&obs.tier)
+            .cloned()
+            .unwrap_or_else(|| BurnThresholds::for_tier(obs.tier));
         let breach = obs.short_burn >= t.fast_burn
             && obs.long_burn >= t.slow_burn
             && obs.budget_consumed >= t.min_budget_consumed;
-        let verdict = if breach { RollbackVerdict::Rollback } else { RollbackVerdict::Hold };
+        let verdict = if breach {
+            RollbackVerdict::Rollback
+        } else {
+            RollbackVerdict::Hold
+        };
         let rationale = format!(
             "tier={:?} short_burn={:.2} (thresh {:.2}/{ }s) long_burn={:.2} (thresh {:.2}/{ }s) budget_consumed={:.3} (min {:.3}) verdict={verdict:?}",
             obs.tier,
@@ -241,19 +279,28 @@ impl RollbackEngine {
         if decision.verdict != RollbackVerdict::Rollback {
             return Ok(false);
         }
-        let did = action.rollback(&decision.deployment_id, &decision.rationale).await?;
+        let did = action
+            .rollback(&decision.deployment_id, &decision.rationale)
+            .await?;
         self.analyses.push(PostRollbackAnalysis {
             deployment_id: decision.deployment_id.clone(),
             rolled_back_at: Utc::now(),
             trigger: decision.clone(),
-            outcome: if did { "rolled back".to_string() } else { "already rolled back (idempotent no-op)".to_string() },
+            outcome: if did {
+                "rolled back".to_string()
+            } else {
+                "already rolled back (idempotent no-op)".to_string()
+            },
             reviewer: None,
         });
         Ok(did)
     }
 
     pub fn decisions_for(&self, deployment_id: &str) -> Vec<&RollbackDecision> {
-        self.decisions.iter().filter(|d| d.deployment_id == deployment_id).collect()
+        self.decisions
+            .iter()
+            .filter(|d| d.deployment_id == deployment_id)
+            .collect()
     }
 }
 
@@ -286,21 +333,39 @@ mod tests {
     async fn single_window_spike_holds() {
         let mut engine = RollbackEngine::new();
         // Fast short-window spike but quiet long window -> Hold (no false rollback).
-        let d = engine.evaluate(&BurnObservation::new("dep-spike", ServiceTier::High, 25.0, 0.5, 0.2));
+        let d = engine.evaluate(&BurnObservation::new(
+            "dep-spike",
+            ServiceTier::High,
+            25.0,
+            0.5,
+            0.2,
+        ));
         assert_eq!(d.verdict, RollbackVerdict::Hold);
     }
 
     #[tokio::test]
     async fn low_budget_consumption_holds() {
         let mut engine = RollbackEngine::new();
-        let d = engine.evaluate(&BurnObservation::new("dep-early", ServiceTier::Critical, 9.0, 4.0, 0.01));
+        let d = engine.evaluate(&BurnObservation::new(
+            "dep-early",
+            ServiceTier::Critical,
+            9.0,
+            4.0,
+            0.01,
+        ));
         assert_eq!(d.verdict, RollbackVerdict::Hold);
     }
 
     #[test]
     fn rationale_attaches_to_deployment_record() {
         let mut engine = RollbackEngine::new();
-        let d = engine.evaluate(&BurnObservation::new("dep-x", ServiceTier::Standard, 20.0, 5.0, 0.5));
+        let d = engine.evaluate(&BurnObservation::new(
+            "dep-x",
+            ServiceTier::Standard,
+            20.0,
+            5.0,
+            0.5,
+        ));
         assert_eq!(d.verdict, RollbackVerdict::Rollback);
         let ann = d.record_annotation();
         assert!(ann.contains_key("stellar.org/rollback-rationale"));
@@ -312,8 +377,20 @@ mod tests {
         let mut engine = RollbackEngine::new();
         // Four seeded scenarios at differing severities.
         let cases = vec![
-            (ServiceTier::Critical, 8.0, 3.0, 0.30, RollbackVerdict::Rollback),
-            (ServiceTier::High, 11.0, 3.5, 0.20, RollbackVerdict::Rollback),
+            (
+                ServiceTier::Critical,
+                8.0,
+                3.0,
+                0.30,
+                RollbackVerdict::Rollback,
+            ),
+            (
+                ServiceTier::High,
+                11.0,
+                3.5,
+                0.20,
+                RollbackVerdict::Rollback,
+            ),
             (ServiceTier::Standard, 5.0, 1.0, 0.05, RollbackVerdict::Hold),
             (ServiceTier::High, 30.0, 0.4, 0.50, RollbackVerdict::Hold),
         ];

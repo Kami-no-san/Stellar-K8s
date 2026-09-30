@@ -25,10 +25,10 @@
 //! - Round-trip fuzz testing for version pairs
 
 use crate::error::{Error, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use chrono::{DateTime, Utc};
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 /// Declarative schema migration graph
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -208,7 +208,10 @@ impl SchemaVersionConverter {
         }
 
         // Record success
-        let spec_hash = format!("{:?}", serde_json::to_string(&current_spec).unwrap_or_default());
+        let spec_hash = format!(
+            "{:?}",
+            serde_json::to_string(&current_spec).unwrap_or_default()
+        );
         self.audit_buffer.record(ConversionAuditEvent {
             crd_kind: crd_kind.to_string(),
             resource_name: resource_name.to_string(),
@@ -302,7 +305,11 @@ impl SchemaVersionConverter {
     }
 
     /// Apply a single field mapping
-    fn apply_field_mapping(&self, spec: &mut serde_json::Value, mapping: &FieldMapping) -> Result<()> {
+    fn apply_field_mapping(
+        &self,
+        spec: &mut serde_json::Value,
+        mapping: &FieldMapping,
+    ) -> Result<()> {
         match &mapping.transformation {
             TransformationType::Identity => {
                 // Get source and move to target

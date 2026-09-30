@@ -37,10 +37,10 @@
 //!    └── Jain's Fairness Index calculation (J >= 0.90 target)
 //! ```
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -67,8 +67,12 @@ pub struct TenantResourceQuota {
     pub guaranteed_share_percent: f64,
 }
 
-fn default_weight() -> f64 { 1.0 }
-fn default_guaranteed_share() -> f64 { 10.0 }
+fn default_weight() -> f64 {
+    1.0
+}
+fn default_guaranteed_share() -> f64 {
+    10.0
+}
 
 /// Total available cluster capacity across nodes.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -244,7 +248,9 @@ impl FairShareSchedulerEngine {
         is_validator: bool,
     ) -> Result<()> {
         let quota = self.quotas.get(tenant_id).ok_or_else(|| {
-            Error::Validation(format!("Unknown tenant '{tenant_id}' has no configured quota"))
+            Error::Validation(format!(
+                "Unknown tenant '{tenant_id}' has no configured quota"
+            ))
         })?;
 
         let usage = self.usages.get(tenant_id).cloned().unwrap_or_default();
@@ -339,7 +345,10 @@ impl MultiTenantSchedulerManager {
         req_mem: u64,
         is_validator: bool,
     ) -> Result<()> {
-        self.inner.read().await.validate_admission(tenant_id, req_cpu, req_mem, is_validator)
+        self.inner
+            .read()
+            .await
+            .validate_admission(tenant_id, req_cpu, req_mem, is_validator)
     }
 
     pub async fn jain_fairness_index(&self) -> f64 {
@@ -369,12 +378,15 @@ mod tests {
             max_total_pods: 20,
             guaranteed_share_percent: 10.0,
         });
-        engine.update_usage("tenant-a", TenantUsage {
-            allocated_cpu_cores: 10.0,
-            allocated_memory_bytes: 20 * 1024 * 1024 * 1024,
-            active_validators: 1,
-            active_pods: 5,
-        });
+        engine.update_usage(
+            "tenant-a",
+            TenantUsage {
+                allocated_cpu_cores: 10.0,
+                allocated_memory_bytes: 20 * 1024 * 1024 * 1024,
+                active_validators: 1,
+                active_pods: 5,
+            },
+        );
 
         // Tenant B: Weight 2.0 (higher tier), using 10% CPU and 20% Mem -> dominant = 20% / 2.0 = 10%
         engine.set_quota(TenantResourceQuota {
@@ -386,12 +398,15 @@ mod tests {
             max_total_pods: 20,
             guaranteed_share_percent: 20.0,
         });
-        engine.update_usage("tenant-b", TenantUsage {
-            allocated_cpu_cores: 10.0,
-            allocated_memory_bytes: 20 * 1024 * 1024 * 1024,
-            active_validators: 1,
-            active_pods: 5,
-        });
+        engine.update_usage(
+            "tenant-b",
+            TenantUsage {
+                allocated_cpu_cores: 10.0,
+                allocated_memory_bytes: 20 * 1024 * 1024 * 1024,
+                active_validators: 1,
+                active_pods: 5,
+            },
+        );
 
         let p_a = engine.score_pod_for_tenant("tenant-a");
         let p_b = engine.score_pod_for_tenant("tenant-b");
@@ -412,12 +427,15 @@ mod tests {
             max_total_pods: 3,
             guaranteed_share_percent: 10.0,
         });
-        engine.update_usage("tenant-c", TenantUsage {
-            allocated_cpu_cores: 3.5,
-            allocated_memory_bytes: 6 * 1024 * 1024 * 1024,
-            active_validators: 1,
-            active_pods: 2,
-        });
+        engine.update_usage(
+            "tenant-c",
+            TenantUsage {
+                allocated_cpu_cores: 3.5,
+                allocated_memory_bytes: 6 * 1024 * 1024 * 1024,
+                active_validators: 1,
+                active_pods: 2,
+            },
+        );
 
         // Requesting 1.0 CPU will exceed 4.0 limit (3.5 + 1.0 = 4.5)
         let res1 = engine.validate_admission("tenant-c", 1.0, 1024, false);
@@ -427,7 +445,10 @@ mod tests {
         // Requesting second validator node when limit is 1
         let res2 = engine.validate_admission("tenant-c", 0.1, 1024, true);
         assert!(res2.is_err());
-        assert!(res2.unwrap_err().to_string().contains("Validator quota exceeded"));
+        assert!(res2
+            .unwrap_err()
+            .to_string()
+            .contains("Validator quota exceeded"));
 
         // Valid small request succeeds
         let res3 = engine.validate_admission("tenant-c", 0.2, 512, false);
@@ -453,12 +474,15 @@ mod tests {
                 max_total_pods: 20,
                 guaranteed_share_percent: 33.3,
             });
-            engine.update_usage(t, TenantUsage {
-                allocated_cpu_cores: 20.0,
-                allocated_memory_bytes: 20 * 1024 * 1024 * 1024,
-                active_validators: 1,
-                active_pods: 5,
-            });
+            engine.update_usage(
+                t,
+                TenantUsage {
+                    allocated_cpu_cores: 20.0,
+                    allocated_memory_bytes: 20 * 1024 * 1024 * 1024,
+                    active_validators: 1,
+                    active_pods: 5,
+                },
+            );
         }
 
         let jain = engine.jain_fairness_index();

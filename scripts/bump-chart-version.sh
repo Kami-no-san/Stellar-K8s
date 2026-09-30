@@ -251,6 +251,15 @@ log "Bump type: $BUMP_TYPE → new version: $NEW_VERSION"
 
 # ── Apply to Chart.yaml (unless dry-run or none) ──────────────────────────────
 if [[ "$DRY_RUN" == "false" && "$BUMP_TYPE" != "none" && "$HAS_CHANGES" == "true" ]]; then
+  # Chart.yaml must carry exactly one `version:` and one `appVersion:` key.
+  # Duplicate keys make the file invalid YAML, so fail loudly rather than
+  # silently rewriting every duplicate the way a blanket `s/^version:.*/` would.
+  VERSION_LINES=$(grep -c '^version:' "$CHART_YAML" || true)
+  APPVERSION_LINES=$(grep -c '^appVersion:' "$CHART_YAML" || true)
+  if [[ "$VERSION_LINES" -ne 1 || "$APPVERSION_LINES" -ne 1 ]]; then
+    die "Chart.yaml must contain exactly one 'version:' and one 'appVersion:' key (found ${VERSION_LINES} and ${APPVERSION_LINES}). Fix the file manually before bumping."
+  fi
+
   # Use sed to update in-place; compatible with GNU and BSD sed
   sed -i.bak "s/^version:.*/version: ${NEW_VERSION}/" "$CHART_YAML"
   sed -i.bak "s/^appVersion:.*/appVersion: \"${NEW_VERSION}\"/" "$CHART_YAML"

@@ -122,10 +122,7 @@ impl LedgerCloseDispatcher {
             if !spec.enabled {
                 continue;
             }
-            if !spec
-                .events
-                .contains(&LedgerCloseEventType::LedgerClose)
-            {
+            if !spec.events.contains(&LedgerCloseEventType::LedgerClose) {
                 continue;
             }
 
@@ -141,17 +138,13 @@ impl LedgerCloseDispatcher {
                 .unwrap_or_else(|| "unknown".to_string());
 
             self.ensure_worker(&namespace, &name, &hook).await;
-            self.send_to_worker(&namespace, &name, payload.clone()).await;
+            self.send_to_worker(&namespace, &name, payload.clone())
+                .await;
         }
     }
 
     /// Ensure a background worker exists for `(namespace, name)`.
-    async fn ensure_worker(
-        &self,
-        namespace: &str,
-        name: &str,
-        hook: &LedgerCloseWebhook,
-    ) {
+    async fn ensure_worker(&self, namespace: &str, name: &str, hook: &LedgerCloseWebhook) {
         let mut workers = self.workers.write().await;
         let ns_map = workers.entry(namespace.to_string()).or_default();
 
@@ -176,12 +169,7 @@ impl LedgerCloseDispatcher {
     }
 
     /// Push a payload into the named worker's channel (non-blocking drop if full).
-    async fn send_to_worker(
-        &self,
-        namespace: &str,
-        name: &str,
-        payload: LedgerClosePayload,
-    ) {
+    async fn send_to_worker(&self, namespace: &str, name: &str, payload: LedgerClosePayload) {
         let workers = self.workers.read().await;
         if let Some(worker) = workers.get(namespace).and_then(|m| m.get(name)) {
             if worker.tx.try_send(payload).is_err() {
@@ -208,16 +196,12 @@ async fn run_subscription_worker(
 ) {
     while let Some(payload) = rx.recv().await {
         let ledger_seq = payload.ledger_sequence;
-        debug!(
-            "Delivering ledger {ledger_seq} to LedgerCloseWebhook {namespace}/{name}"
-        );
+        debug!("Delivering ledger {ledger_seq} to LedgerCloseWebhook {namespace}/{name}");
 
         let entry = deliver_with_retry(&http, &spec, &payload).await;
 
         // Patch status back into Kubernetes.
-        if let Err(e) =
-            patch_webhook_status(&client, &namespace, &name, &entry).await
-        {
+        if let Err(e) = patch_webhook_status(&client, &namespace, &name, &entry).await {
             error!("Failed to patch status for {namespace}/{name}: {e}");
         }
     }
@@ -355,8 +339,8 @@ fn sign_payload(body: &[u8], secret: &str) -> String {
     if secret.is_empty() {
         return String::new();
     }
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
-        .expect("HMAC can take key of any size");
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(body);
     hex_encode(mac.finalize().into_bytes())
 }
@@ -374,9 +358,7 @@ async fn patch_webhook_status(
 
     // Fetch current status to accumulate counters and log.
     let current = api.get(name).await.ok();
-    let mut status = current
-        .and_then(|h| h.status)
-        .unwrap_or_default();
+    let mut status = current.and_then(|h| h.status).unwrap_or_default();
 
     // Update counters.
     match entry.phase {
@@ -485,9 +467,7 @@ pub async fn run_ledger_close_poll_loop(
 
     let mut last_seen_seq: u64 = 0;
 
-    info!(
-        "Starting ledger-close poll loop for {source_namespace}/{source_node} at {horizon_url}"
-    );
+    info!("Starting ledger-close poll loop for {source_namespace}/{source_node} at {horizon_url}");
 
     loop {
         if let Some((seq, close_time, tx_count, op_count)) =

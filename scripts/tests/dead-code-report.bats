@@ -3,7 +3,7 @@
 # bats suite for scripts/dead-code-report.sh
 #
 # Covers:
-#   - report generation with canned cargo metadata output (PATH shims)
+#   - report generation from canned `cargo check` dead-code output (PATH shims)
 #   - empty-input handling producing a well-formed empty report
 #
 
@@ -46,8 +46,11 @@ EOF
   [ -x "$SCRIPT" ]
 }
 
-@test "generates a report from canned cargo metadata output" {
-  make_shim cargo '{"packages":[{"name":"demo","targets":[{"name":"demo","kind":["bin"]}]}]}'
+@test "generates a report from canned cargo check output" {
+  # The script runs `cargo check --all-targets --message-format short` and
+  # keeps lines matching its dead-code diagnostic patterns, so the shim has to
+  # emit such a line rather than `cargo metadata` JSON.
+  make_shim cargo "src/lib.rs:10:5: warning: constant \`DEMO_UNUSED\` is never used"
 
   run "$SCRIPT"
   [ "$status" -eq 0 ]
@@ -55,8 +58,8 @@ EOF
   [ -f "$DEAD_CODE_REPORT_OUT" ]
   [ -s "$DEAD_CODE_REPORT_OUT" ]
 
-  # The report should reference the crate discovered via the shim.
-  run grep -q "demo" "$DEAD_CODE_REPORT_OUT"
+  # The report should surface the diagnostic the shim produced.
+  run grep -q "DEMO_UNUSED" "$DEAD_CODE_REPORT_OUT"
   [ "$status" -eq 0 ]
 }
 

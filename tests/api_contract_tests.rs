@@ -72,7 +72,10 @@ fn get_response_schema(method: &str, path: &str, status: &str) -> Option<Value> 
 fn resolve_response(response: &Value) -> Value {
     if let Some(ref_str) = response.get("$ref").and_then(|v| v.as_str()) {
         let path = ref_str.trim_start_matches("#/");
-        OPENAPI_SPEC.pointer(&format!("/{}", path)).cloned().unwrap_or_else(|| response.clone())
+        OPENAPI_SPEC
+            .pointer(&format!("/{}", path))
+            .cloned()
+            .unwrap_or_else(|| response.clone())
     } else {
         response.clone()
     }
@@ -1053,11 +1056,27 @@ fn api_endpoint_coverage_report() {
         ("post", "/api/v1/optimization/simulate", true),
         ("get", "/api/v1/optimization/forecast", true),
         ("get", "/api/v1/traffic/dashboard", true),
-        ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/logs", true),
-        ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/conditions", true),
+        (
+            "get",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/logs",
+            true,
+        ),
+        (
+            "get",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/conditions",
+            true,
+        ),
         ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/dr", true),
-        ("get", "/api/v1/dashboard/nodes/{namespace}/{name}/metrics", true),
-        ("post", "/api/v1/dashboard/nodes/{namespace}/{name}/actions", true),
+        (
+            "get",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/metrics",
+            true,
+        ),
+        (
+            "post",
+            "/api/v1/dashboard/nodes/{namespace}/{name}/actions",
+            true,
+        ),
         ("get", "/api/v1/dashboard/operator/logs", true),
         ("get", "/api/v1/quorum/topology", true),
         ("get", "/api/v1/docs/search-index", false),

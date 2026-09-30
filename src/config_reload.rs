@@ -161,7 +161,10 @@ impl<T: Clone + Send + Sync + 'static> ConfigReloader<T> {
 
     /// Three-line glue for agents: build + spawn watcher + read.
     /// Returns the shared handle; see module docs for the full snippet.
-    pub fn install(initial: T, validator: impl Fn(&T) -> Result<(), String> + Send + Sync + 'static) -> Self {
+    pub fn install(
+        initial: T,
+        validator: impl Fn(&T) -> Result<(), String> + Send + Sync + 'static,
+    ) -> Self {
         Self::new(initial, validator)
     }
 
@@ -385,7 +388,10 @@ mod tests {
         let before = reloader.get_arc().await;
         for i in 3..1003u32 {
             let payload = format!(r#"{{"endpoint":"http://n{i}","workers":{}}}"#, (i % 16) + 1);
-            reloader.try_reload_bytes(payload.as_bytes(), parse).await.unwrap();
+            reloader
+                .try_reload_bytes(payload.as_bytes(), parse)
+                .await
+                .unwrap();
         }
         // Old handle still valid (no torn reads, no drops).
         assert_eq!(before.endpoint, "http://a");

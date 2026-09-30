@@ -105,10 +105,18 @@ impl PartitionIncidentDetector {
 
         let action_plan = vec![
             "1. Notify on-call operators and federation cluster admins.".to_string(),
-            format!("2. Apply temporary quorum override excluding isolated peers: [{}].", partition.unreachable_peers.join(", ")),
-            format!("3. Set updated validator quorum threshold to {} / {}.", new_threshold, total_reachable),
-            "4. Monitor stellar-core SCP sync state via /info until State reaches 'Synced'.".to_string(),
-            "5. Revert quorum adjustment upon partition healing and network reconnection.".to_string(),
+            format!(
+                "2. Apply temporary quorum override excluding isolated peers: [{}].",
+                partition.unreachable_peers.join(", ")
+            ),
+            format!(
+                "3. Set updated validator quorum threshold to {} / {}.",
+                new_threshold, total_reachable
+            ),
+            "4. Monitor stellar-core SCP sync state via /info until State reaches 'Synced'."
+                .to_string(),
+            "5. Revert quorum adjustment upon partition healing and network reconnection."
+                .to_string(),
         ];
 
         QuorumAdjustmentRecommendation {
@@ -144,7 +152,11 @@ impl PartitionIncidentDetector {
                     "username": "Stellar-K8s Partition Monitor",
                     "icon_emoji": ":rotating_light:"
                 });
-                self.http_client.post(&channel.endpoint_url).json(&payload).send().await
+                self.http_client
+                    .post(&channel.endpoint_url)
+                    .json(&payload)
+                    .send()
+                    .await
             }
             AlertChannelType::Webhook => {
                 let payload = json!({
@@ -154,7 +166,11 @@ impl PartitionIncidentDetector {
                     "recommendation": rec,
                     "timestamp": Utc::now().to_rfc3339()
                 });
-                self.http_client.post(&channel.endpoint_url).json(&payload).send().await
+                self.http_client
+                    .post(&channel.endpoint_url)
+                    .json(&payload)
+                    .send()
+                    .await
             }
             AlertChannelType::PagerDuty => {
                 let routing_key = channel.routing_key.clone().unwrap_or_default();
@@ -167,7 +183,11 @@ impl PartitionIncidentDetector {
                         "source": "stellar-k8s-operator"
                     }
                 });
-                self.http_client.post(&channel.endpoint_url).json(&payload).send().await
+                self.http_client
+                    .post(&channel.endpoint_url)
+                    .json(&payload)
+                    .send()
+                    .await
             }
             AlertChannelType::OpsGenie => {
                 let payload = json!({
@@ -175,7 +195,11 @@ impl PartitionIncidentDetector {
                     "priority": "P1",
                     "description": message
                 });
-                self.http_client.post(&channel.endpoint_url).json(&payload).send().await
+                self.http_client
+                    .post(&channel.endpoint_url)
+                    .json(&payload)
+                    .send()
+                    .await
             }
         };
 
@@ -217,7 +241,9 @@ impl PartitionIncidentDetector {
         // 2. Dispatch alerts to all configured channels
         let mut alert_dispatches = Vec::new();
         for channel in &alert_channels {
-            let dispatch = self.dispatch_alert(channel, &title, &partition, &recommendation).await;
+            let dispatch = self
+                .dispatch_alert(channel, &title, &partition, &recommendation)
+                .await;
             info!(channel = %channel.name, success = dispatch.success, latency = dispatch.latency_ms, "Dispatched partition alert");
             alert_dispatches.push(dispatch);
         }
@@ -227,31 +253,42 @@ impl PartitionIncidentDetector {
         timeline.push(IncidentTimelineEntry {
             timestamp: now - Duration::seconds(15),
             stage: "Detection".to_string(),
-            message: "First missed ledger close detected; monitored consensus latency spiked".to_string(),
+            message: "First missed ledger close detected; monitored consensus latency spiked"
+                .to_string(),
             metadata: None,
         });
         timeline.push(IncidentTimelineEntry {
             timestamp: now - Duration::seconds(10),
             stage: "Detection".to_string(),
-            message: "Second consecutive missed close; peer ping failed to 2 quorum members".to_string(),
+            message: "Second consecutive missed close; peer ping failed to 2 quorum members"
+                .to_string(),
             metadata: None,
         });
         timeline.push(IncidentTimelineEntry {
             timestamp: now - Duration::seconds(1),
             stage: "Escalation".to_string(),
-            message: format!("Third missed close reached ({}s stall). Network partition officially declared.", partition.stall_duration_secs),
+            message: format!(
+                "Third missed close reached ({}s stall). Network partition officially declared.",
+                partition.stall_duration_secs
+            ),
             metadata: Some(json!({ "missed_closes": partition.missed_ledger_closes })),
         });
         timeline.push(IncidentTimelineEntry {
             timestamp: now,
             stage: "Alerting".to_string(),
-            message: format!("Automated emergency alert dispatched to {} channels within 30s SLA.", alert_channels.len()),
+            message: format!(
+                "Automated emergency alert dispatched to {} channels within 30s SLA.",
+                alert_channels.len()
+            ),
             metadata: None,
         });
         timeline.push(IncidentTimelineEntry {
             timestamp: now,
             stage: "Mitigation".to_string(),
-            message: format!("Generated quorum adjustment recommendation (threshold: {}).", recommendation.new_threshold),
+            message: format!(
+                "Generated quorum adjustment recommendation (threshold: {}).",
+                recommendation.new_threshold
+            ),
             metadata: Some(json!({ "suggested_threshold": recommendation.new_threshold })),
         });
 
@@ -261,8 +298,14 @@ impl PartitionIncidentDetector {
                 namespace: Some(namespace.to_string()),
                 labels: Some({
                     let mut l = std::collections::BTreeMap::new();
-                    l.insert("incident.stellar.org/type".to_string(), "NetworkPartition".to_string());
-                    l.insert("incident.stellar.org/validator".to_string(), validator_name.to_string());
+                    l.insert(
+                        "incident.stellar.org/type".to_string(),
+                        "NetworkPartition".to_string(),
+                    );
+                    l.insert(
+                        "incident.stellar.org/validator".to_string(),
+                        validator_name.to_string(),
+                    );
                     l
                 }),
                 ..Default::default()

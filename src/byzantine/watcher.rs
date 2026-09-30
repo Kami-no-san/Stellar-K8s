@@ -34,6 +34,7 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
 
+use crate::error::{Error, Result};
 use prometheus_client::encoding::text::encode;
 use prometheus_client::encoding::EncodeLabelSet;
 use prometheus_client::metrics::counter::Counter;
@@ -41,7 +42,6 @@ use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::registry::Registry;
 use reqwest::Client;
-use crate::error::{Error, Result};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
@@ -282,11 +282,10 @@ async fn poll_stellar_core(client: &Client, endpoint: &str) -> Result<(u64, Stri
     let url = format!("{}/info", endpoint.trim_end_matches('/'));
     debug!("Polling Stellar Core at {}", url);
 
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| Error::internal_step("poll stellar core", format!("HTTP GET failed: {e}")))?;
+    let resp =
+        client.get(&url).send().await.map_err(|e| {
+            Error::internal_step("poll stellar core", format!("HTTP GET failed: {e}"))
+        })?;
 
     if !resp.status().is_success() {
         return Err(Error::internal_step(
@@ -295,12 +294,12 @@ async fn poll_stellar_core(client: &Client, endpoint: &str) -> Result<(u64, Stri
         ));
     }
 
-    let info = resp
-        .json::<StellarCoreInfoResponse>()
-        .await
-        .map_err(|e| {
-            Error::internal_step("parse stellar core response", format!("JSON parse failed: {e}"))
-        })?;
+    let info = resp.json::<StellarCoreInfoResponse>().await.map_err(|e| {
+        Error::internal_step(
+            "parse stellar core response",
+            format!("JSON parse failed: {e}"),
+        )
+    })?;
 
     let sequence = info.info.ledger.num;
     let hash = info.info.ledger.hash.clone();
@@ -417,7 +416,10 @@ async fn serve_metrics(state: SharedState, bind_addr: &str) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
         .map_err(|e| {
-            Error::internal_step("bind metrics server", format!("Failed to bind to {bind_addr}: {e}"))
+            Error::internal_step(
+                "bind metrics server",
+                format!("Failed to bind to {bind_addr}: {e}"),
+            )
         })?;
 
     info!("Metrics server listening on http://{}", bind_addr);

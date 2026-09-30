@@ -133,12 +133,23 @@ struct ShardData {
 impl ShardedIndex {
     pub fn new(config: IndexShardingConfig) -> Self {
         let ring = ShardRing::new(&config);
-        let shards = (0..config.shard_count).map(|_| ShardData::default()).collect();
-        Self { shards, ring, config }
+        let shards = (0..config.shard_count)
+            .map(|_| ShardData::default())
+            .collect();
+        Self {
+            shards,
+            ring,
+            config,
+        }
     }
 
     /// Insert an object into the appropriate shard.
-    pub fn insert(&mut self, object_uid: String, shard_key_value: String, data: Vec<u8>) -> ShardAssignment {
+    pub fn insert(
+        &mut self,
+        object_uid: String,
+        shard_key_value: String,
+        data: Vec<u8>,
+    ) -> ShardAssignment {
         let shard_id = self.ring.get_shard(&shard_key_value);
         let shard = &mut self.shards[shard_id];
         let size = data.len();
@@ -159,7 +170,11 @@ impl ShardedIndex {
 
     /// Get per-shard memory stats.
     pub fn shard_memory_stats(&self) -> Vec<(usize, usize)> {
-        self.shards.iter().map(|s| s.memory_bytes).enumerate().collect()
+        self.shards
+            .iter()
+            .map(|s| s.memory_bytes)
+            .enumerate()
+            .collect()
     }
 
     /// Rebalance shards when config changes (e.g., shard_count increase).
@@ -168,7 +183,9 @@ impl ShardedIndex {
         let old_shards = std::mem::take(&mut self.shards);
         self.config = new_config;
         self.ring = ShardRing::new(&self.config);
-        self.shards = (0..self.config.shard_count).map(|_| ShardData::default()).collect();
+        self.shards = (0..self.config.shard_count)
+            .map(|_| ShardData::default())
+            .collect();
 
         let old_shards_len = old_shards.len();
         let mut moved = 0;
@@ -184,7 +201,12 @@ impl ShardedIndex {
                 }
             }
         }
-        info!(old_shards = old_shards_len, new_shards = self.shards.len(), moved, "Shard rebalance completed");
+        info!(
+            old_shards = old_shards_len,
+            new_shards = self.shards.len(),
+            moved,
+            "Shard rebalance completed"
+        );
         moved
     }
 }
@@ -195,7 +217,11 @@ mod tests {
 
     #[test]
     fn test_shard_ring_deterministic() {
-        let config = IndexShardingConfig { shard_count: 4, shard_key: "tenant".into(), virtual_nodes: 10 };
+        let config = IndexShardingConfig {
+            shard_count: 4,
+            shard_key: "tenant".into(),
+            virtual_nodes: 10,
+        };
         let ring = ShardRing::new(&config);
         assert_eq!(ring.get_shard("tenant-a"), ring.get_shard("tenant-a"));
         assert_eq!(ring.get_shard("tenant-b"), ring.get_shard("tenant-b"));
@@ -203,7 +229,11 @@ mod tests {
 
     #[test]
     fn test_shard_distribution() {
-        let config = IndexShardingConfig { shard_count: 16, shard_key: "tenant".into(), virtual_nodes: 100 };
+        let config = IndexShardingConfig {
+            shard_count: 16,
+            shard_key: "tenant".into(),
+            virtual_nodes: 100,
+        };
         let ring = ShardRing::new(&config);
         let mut counts = vec![0; 16];
         for i in 0..1000 {
@@ -228,14 +258,28 @@ mod tests {
 
     #[test]
     fn test_rebalance_moves_subset() {
-        let config = IndexShardingConfig { shard_count: 4, ..Default::default() };
+        let config = IndexShardingConfig {
+            shard_count: 4,
+            ..Default::default()
+        };
         let mut index = ShardedIndex::new(config);
         for i in 0..100 {
-            index.insert(format!("obj-{}", i), format!("key-{}", i % 10), vec![0; 100]);
+            index.insert(
+                format!("obj-{}", i),
+                format!("key-{}", i % 10),
+                vec![0; 100],
+            );
         }
-        let moved = index.rebalance(IndexShardingConfig { shard_count: 8, ..Default::default() });
+        let moved = index.rebalance(IndexShardingConfig {
+            shard_count: 8,
+            ..Default::default()
+        });
         // With consistent hashing, roughly half the objects should move when doubling shards
-        assert!(moved > 20 && moved < 80, "Expected ~50% move, got {}", moved);
+        assert!(
+            moved > 20 && moved < 80,
+            "Expected ~50% move, got {}",
+            moved
+        );
         // Total memory should be preserved
         assert_eq!(index.total_memory_bytes(), 100 * 100);
     }

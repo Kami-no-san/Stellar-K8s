@@ -126,13 +126,28 @@ pub struct PolicyRule {
 
 impl PolicyRule {
     pub fn deny(id: &str, expr: &str, severity: Severity) -> Self {
-        Self { id: id.to_string(), expr: expr.to_string(), action: PolicyAction::Deny, severity }
+        Self {
+            id: id.to_string(),
+            expr: expr.to_string(),
+            action: PolicyAction::Deny,
+            severity,
+        }
     }
     pub fn warn(id: &str, expr: &str, severity: Severity) -> Self {
-        Self { id: id.to_string(), expr: expr.to_string(), action: PolicyAction::Warn, severity }
+        Self {
+            id: id.to_string(),
+            expr: expr.to_string(),
+            action: PolicyAction::Warn,
+            severity,
+        }
     }
     pub fn allow(id: &str, expr: &str) -> Self {
-        Self { id: id.to_string(), expr: expr.to_string(), action: PolicyAction::Allow, severity: Severity::Info }
+        Self {
+            id: id.to_string(),
+            expr: expr.to_string(),
+            action: PolicyAction::Allow,
+            severity: Severity::Info,
+        }
     }
 }
 
@@ -149,7 +164,12 @@ pub struct PolicyBundle {
 impl PolicyBundle {
     pub fn new(version: &str, rules: Vec<PolicyRule>) -> Self {
         let digest = bundle_digest(version, &rules);
-        Self { version: version.to_string(), digest, rules, created_at: Utc::now() }
+        Self {
+            version: version.to_string(),
+            digest,
+            rules,
+            created_at: Utc::now(),
+        }
     }
 
     /// Recompute the digest. A `false` result means the bundle was mutated
@@ -160,12 +180,19 @@ impl PolicyBundle {
 
     /// Highest severity across the rules.
     pub fn severity(&self) -> Severity {
-        self.rules.iter().map(|r| r.severity).max().unwrap_or(Severity::Info)
+        self.rules
+            .iter()
+            .map(|r| r.severity)
+            .max()
+            .unwrap_or(Severity::Info)
     }
 
     /// Rules that can reject an admission.
     pub fn deny_rules(&self) -> Vec<&PolicyRule> {
-        self.rules.iter().filter(|r| r.action == PolicyAction::Deny).collect()
+        self.rules
+            .iter()
+            .filter(|r| r.action == PolicyAction::Deny)
+            .collect()
     }
 }
 
@@ -201,7 +228,11 @@ pub enum Environment {
 
 impl Environment {
     /// The full promotion path, in order.
-    pub const PATH: [Environment; 3] = [Environment::Dev, Environment::Staging, Environment::Production];
+    pub const PATH: [Environment; 3] = [
+        Environment::Dev,
+        Environment::Staging,
+        Environment::Production,
+    ];
 
     /// The environment that must be promoted first, if any.
     pub fn predecessor(self) -> Option<Environment> {
@@ -276,10 +307,17 @@ pub struct PolicyInventory {
 
 impl PolicyInventory {
     pub fn new(environment: Environment, resources: usize) -> Self {
-        Self { environment, resources, namespaces: BTreeMap::new() }
+        Self {
+            environment,
+            resources,
+            namespaces: BTreeMap::new(),
+        }
     }
 
-    pub fn with_namespaces(mut self, namespaces: impl IntoIterator<Item = (String, usize)>) -> Self {
+    pub fn with_namespaces(
+        mut self,
+        namespaces: impl IntoIterator<Item = (String, usize)>,
+    ) -> Self {
         self.namespaces = namespaces.into_iter().collect();
         self
     }
@@ -367,33 +405,50 @@ pub fn analyze_impact(bundle: &PolicyBundle, inventory: &PolicyInventory) -> Imp
     } else {
         0
     };
-    let warned = if has_warn { (inventory.resources * 10 / 100).max(1) } else { 0 };
-    let denied_ratio = if inventory.resources == 0 { 0.0 } else { denied as f64 / inventory.resources as f64 };
+    let warned = if has_warn {
+        (inventory.resources * 10 / 100).max(1)
+    } else {
+        0
+    };
+    let denied_ratio = if inventory.resources == 0 {
+        0.0
+    } else {
+        denied as f64 / inventory.resources as f64
+    };
 
-    let mut wiped_namespaces: Vec<String> = if overbroad { inventory.namespaces.keys().cloned().collect() } else { Vec::new() };
+    let mut wiped_namespaces: Vec<String> = if overbroad {
+        inventory.namespaces.keys().cloned().collect()
+    } else {
+        Vec::new()
+    };
     wiped_namespaces.sort();
 
     let mut blockers = Vec::new();
     if overbroad {
         blockers.push(format!(
             "bundle denies all {} resources in {} (ratio {:.2} > budget {:.2})",
-            denied,
-            inventory.environment,
-            denied_ratio,
-            MAX_DENY_RATIO
+            denied, inventory.environment, denied_ratio, MAX_DENY_RATIO
         ));
     }
     if denied_ratio > MAX_DENY_RATIO {
-        blockers.push(format!("deny ratio {:.2} exceeds the {:.2} budget", denied_ratio, MAX_DENY_RATIO));
+        blockers.push(format!(
+            "deny ratio {:.2} exceeds the {:.2} budget",
+            denied_ratio, MAX_DENY_RATIO
+        ));
     }
     for ns in &wiped_namespaces {
         blockers.push(format!("namespace `{ns}` would be emptied entirely"));
     }
     if !bundle.is_intact() {
-        blockers.push("bundle digest does not match its content; it was mutated after creation".to_string());
+        blockers.push(
+            "bundle digest does not match its content; it was mutated after creation".to_string(),
+        );
     }
     if inventory.resources == 0 {
-        blockers.push(format!("no resources in scope for {}", inventory.environment));
+        blockers.push(format!(
+            "no resources in scope for {}",
+            inventory.environment
+        ));
     }
 
     ImpactAnalysis {
@@ -483,7 +538,9 @@ pub struct ManualPromotionClock {
 
 impl ManualPromotionClock {
     pub fn new(start: u64) -> Self {
-        Self { millis: std::sync::Mutex::new(start) }
+        Self {
+            millis: std::sync::Mutex::new(start),
+        }
     }
 }
 
@@ -523,7 +580,12 @@ impl PolicyPromotionPipeline {
                 )
             })
             .collect();
-        Self { states, history: Vec::new(), clock, promote_cost_ms: 2_000 }
+        Self {
+            states,
+            history: Vec::new(),
+            clock,
+            promote_cost_ms: 2_000,
+        }
     }
 
     /// Override the simulated per-environment promotion cost.
@@ -533,7 +595,9 @@ impl PolicyPromotionPipeline {
     }
 
     pub fn state(&self, environment: Environment) -> &EnvironmentState {
-        self.states.get(&environment).expect("every environment has state")
+        self.states
+            .get(&environment)
+            .expect("every environment has state")
     }
 
     /// Enforcement stage currently configured for an environment.
@@ -589,7 +653,10 @@ impl PolicyPromotionPipeline {
 
         self.clock.charge(self.promote_cost_ms);
         let stage = self.stage(inventory.environment);
-        let state = self.states.get_mut(&inventory.environment).expect("state exists");
+        let state = self
+            .states
+            .get_mut(&inventory.environment)
+            .expect("state exists");
         state.previous = state.active.take();
         state.active = Some(bundle.clone());
         state.updated_at = Utc::now();
@@ -616,10 +683,19 @@ impl PolicyPromotionPipeline {
     }
 
     /// Advance the enforcement stage of an environment by exactly one step.
-    pub fn advance_stage(&mut self, environment: Environment) -> Result<EnforcementStage, PromotionError> {
+    pub fn advance_stage(
+        &mut self,
+        environment: Environment,
+    ) -> Result<EnforcementStage, PromotionError> {
         let state = self.states.get_mut(&environment).expect("state exists");
-        let active = state.active.clone().ok_or(PromotionError::NoActiveBundle { environment })?;
-        let next = state.stage.next().ok_or(PromotionError::StageAlreadyMaximal { environment })?;
+        let active = state
+            .active
+            .clone()
+            .ok_or(PromotionError::NoActiveBundle { environment })?;
+        let next = state
+            .stage
+            .next()
+            .ok_or(PromotionError::StageAlreadyMaximal { environment })?;
         state.stage = next;
         state.updated_at = Utc::now();
         self.history.push(PromotionRecord {
@@ -640,7 +716,11 @@ impl PolicyPromotionPipeline {
     pub fn rollback(&mut self) -> Result<RollbackRecord, PromotionError> {
         let targets: Vec<(Environment, PolicyBundle)> = Environment::PATH
             .iter()
-            .filter_map(|e| self.states.get(e).and_then(|s| s.previous.clone().map(|p| (*e, p))))
+            .filter_map(|e| {
+                self.states
+                    .get(e)
+                    .and_then(|s| s.previous.clone().map(|p| (*e, p)))
+            })
             .collect();
         if targets.is_empty() {
             return Err(PromotionError::NothingToRollBack);
@@ -693,14 +773,24 @@ pub enum PromotionError {
 impl fmt::Display for PromotionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PromotionError::MutatedBundle => f.write_str("policy bundle was mutated after creation"),
+            PromotionError::MutatedBundle => {
+                f.write_str("policy bundle was mutated after creation")
+            }
             PromotionError::PredecessorNotPromoted { environment } => {
                 write!(f, "bundle is not promoted to {environment} yet")
             }
-            PromotionError::ImpactBlocked(r) => write!(f, "impact analysis blocked promotion: {}", r.detail),
-            PromotionError::NoActiveBundle { environment } => write!(f, "no bundle promoted to {environment}"),
-            PromotionError::StageAlreadyMaximal { environment } => write!(f, "{environment} is already enforcing"),
-            PromotionError::NothingToRollBack => f.write_str("no previous policy bundle to roll back to"),
+            PromotionError::ImpactBlocked(r) => {
+                write!(f, "impact analysis blocked promotion: {}", r.detail)
+            }
+            PromotionError::NoActiveBundle { environment } => {
+                write!(f, "no bundle promoted to {environment}")
+            }
+            PromotionError::StageAlreadyMaximal { environment } => {
+                write!(f, "{environment} is already enforcing")
+            }
+            PromotionError::NothingToRollBack => {
+                f.write_str("no previous policy bundle to roll back to")
+            }
         }
     }
 }
@@ -725,7 +815,11 @@ mod tests {
             version,
             vec![
                 PolicyRule::deny("no-latest-tag", "imageTag == 'latest'", Severity::High),
-                PolicyRule::warn("pinned-toml-version", "configVersion == 1", Severity::Medium),
+                PolicyRule::warn(
+                    "pinned-toml-version",
+                    "configVersion == 1",
+                    Severity::Medium,
+                ),
             ],
         )
     }
@@ -734,7 +828,11 @@ mod tests {
     fn overbroad_bundle(version: &str) -> PolicyBundle {
         PolicyBundle::new(
             version,
-            vec![PolicyRule::deny("deny-everything", "true", Severity::Critical)],
+            vec![PolicyRule::deny(
+                "deny-everything",
+                "true",
+                Severity::Critical,
+            )],
         )
     }
 
@@ -777,34 +875,47 @@ mod tests {
         let a = analyze_impact(&safe_bundle("1.1.0"), &inventory(Environment::Production));
         assert!(!a.blocks_promotion());
         assert!(a.denied_ratio <= MAX_DENY_RATIO);
-        assert!(a.denied > 0, "a narrow deny rule still rejects some resources");
+        assert!(
+            a.denied > 0,
+            "a narrow deny rule still rejects some resources"
+        );
         assert!(a.wiped_namespaces.is_empty());
         assert!(a.to_markdown().contains("No blockers"));
     }
 
     #[test]
     fn overbroad_policy_is_blocked_against_production_scope() {
-        let a = analyze_impact(&overbroad_bundle("1.2.0"), &inventory(Environment::Production));
+        let a = analyze_impact(
+            &overbroad_bundle("1.2.0"),
+            &inventory(Environment::Production),
+        );
         assert!(a.blocks_promotion());
         assert_eq!(a.denied, 1_000);
         assert_eq!(a.denied_ratio, 1.0);
         assert_eq!(a.wiped_namespaces, vec!["horizon", "rpc", "stellar"]);
         assert!(a.blockers.iter().any(|b| b.contains("denies all")));
-        assert!(a.blockers.iter().any(|b| b.contains("horizon") && b.contains("emptied")));
+        assert!(a
+            .blockers
+            .iter()
+            .any(|b| b.contains("horizon") && b.contains("emptied")));
         assert!(a.to_markdown().contains("**Blocked:**"));
     }
 
     #[test]
     fn mutated_bundle_is_flagged_by_impact_analysis() {
         let mut b = safe_bundle("1.4.0");
-        b.rules.push(PolicyRule::deny("extra", "x == 1", Severity::Critical));
+        b.rules
+            .push(PolicyRule::deny("extra", "x == 1", Severity::Critical));
         let a = analyze_impact(&b, &inventory(Environment::Staging));
         assert!(a.blockers.iter().any(|x| x.contains("mutated")));
     }
 
     #[test]
     fn empty_inventory_is_blocked() {
-        let a = analyze_impact(&safe_bundle("1.0.0"), &PolicyInventory::new(Environment::Dev, 0));
+        let a = analyze_impact(
+            &safe_bundle("1.0.0"),
+            &PolicyInventory::new(Environment::Dev, 0),
+        );
         assert!(a.blocks_promotion());
     }
 
@@ -829,7 +940,14 @@ mod tests {
             assert!(!rec.blocked);
             assert_eq!(rec.bundle_digest, bundle.digest);
         }
-        assert_eq!(p.state(Environment::Production).active.as_ref().unwrap().digest, bundle.digest);
+        assert_eq!(
+            p.state(Environment::Production)
+                .active
+                .as_ref()
+                .unwrap()
+                .digest,
+            bundle.digest
+        );
         assert_eq!(p.history().len(), 3);
     }
 
@@ -839,7 +957,9 @@ mod tests {
         let bundle = safe_bundle("2.1.0");
         assert_eq!(
             p.promote(&bundle, &inventory(Environment::Production)),
-            Err(PromotionError::PredecessorNotPromoted { environment: Environment::Staging })
+            Err(PromotionError::PredecessorNotPromoted {
+                environment: Environment::Staging
+            })
         );
     }
 
@@ -855,7 +975,10 @@ mod tests {
         // Impact analysis blocks the overbroad bundle against every
         // environment's scope.
         for env in Environment::PATH {
-            assert!(p.dry_run(&bad, &inventory(env)).blocks_promotion(), "{env} must block the overbroad bundle");
+            assert!(
+                p.dry_run(&bad, &inventory(env)).blocks_promotion(),
+                "{env} must block the overbroad bundle"
+            );
         }
         // It is refused at the first environment on the path, so it can never
         // reach staging or production at all.
@@ -869,14 +992,27 @@ mod tests {
         for env in [Environment::Staging, Environment::Production] {
             // Each environment's immediate predecessor must already be
             // running this exact digest, which it is not.
-            let expected = PromotionError::PredecessorNotPromoted { environment: env.predecessor().unwrap() };
+            let expected = PromotionError::PredecessorNotPromoted {
+                environment: env.predecessor().unwrap(),
+            };
             assert_eq!(p.promote(&bad, &inventory(env)), Err(expected));
             let active = p.state(env).active.as_ref().unwrap();
             assert_eq!(active.digest, baseline.digest, "{env} was overwritten");
-            assert_ne!(p.stage(env), EnforcementStage::Enforce, "{env} must not enforce the bad bundle");
+            assert_ne!(
+                p.stage(env),
+                EnforcementStage::Enforce,
+                "{env} must not enforce the bad bundle"
+            );
         }
         // Production is untouched.
-        assert_eq!(p.state(Environment::Production).active.as_ref().unwrap().digest, baseline.digest);
+        assert_eq!(
+            p.state(Environment::Production)
+                .active
+                .as_ref()
+                .unwrap()
+                .digest,
+            baseline.digest
+        );
     }
 
     #[test]
@@ -884,17 +1020,25 @@ mod tests {
         let mut p = pipeline();
         let mut b = safe_bundle("3.0.0");
         b.rules[0].expr = "spec.replicas > 99".to_string();
-        assert_eq!(p.promote(&b, &inventory(Environment::Dev)), Err(PromotionError::MutatedBundle));
+        assert_eq!(
+            p.promote(&b, &inventory(Environment::Dev)),
+            Err(PromotionError::MutatedBundle)
+        );
     }
 
     #[test]
     fn blocked_attempt_is_recorded_in_the_audit_trail() {
         let mut p = pipeline();
-        let err = p.promote(&overbroad_bundle("4.0.0"), &inventory(Environment::Dev)).unwrap_err();
+        let err = p
+            .promote(&overbroad_bundle("4.0.0"), &inventory(Environment::Dev))
+            .unwrap_err();
         assert!(matches!(err, PromotionError::ImpactBlocked(_)));
         assert_eq!(p.history().len(), 1);
         assert!(p.history()[0].blocked);
-        assert!(p.state(Environment::Dev).active.is_none(), "a blocked bundle must not be activated");
+        assert!(
+            p.state(Environment::Dev).active.is_none(),
+            "a blocked bundle must not be activated"
+        );
     }
 
     // -- staged enforcement ------------------------------------------------
@@ -910,11 +1054,19 @@ mod tests {
             assert_eq!(p.stage(env), EnforcementStage::Audit);
         }
 
-        assert_eq!(p.advance_stage(Environment::Dev).unwrap(), EnforcementStage::Warn);
-        assert_eq!(p.advance_stage(Environment::Dev).unwrap(), EnforcementStage::Enforce);
+        assert_eq!(
+            p.advance_stage(Environment::Dev).unwrap(),
+            EnforcementStage::Warn
+        );
+        assert_eq!(
+            p.advance_stage(Environment::Dev).unwrap(),
+            EnforcementStage::Enforce
+        );
         assert_eq!(
             p.advance_stage(Environment::Dev),
-            Err(PromotionError::StageAlreadyMaximal { environment: Environment::Dev })
+            Err(PromotionError::StageAlreadyMaximal {
+                environment: Environment::Dev
+            })
         );
         // Stages are per environment: staging and production are untouched.
         assert_eq!(p.stage(Environment::Staging), EnforcementStage::Audit);
@@ -926,7 +1078,9 @@ mod tests {
         let mut p = pipeline();
         assert_eq!(
             p.advance_stage(Environment::Dev),
-            Err(PromotionError::NoActiveBundle { environment: Environment::Dev })
+            Err(PromotionError::NoActiveBundle {
+                environment: Environment::Dev
+            })
         );
     }
 
@@ -953,7 +1107,14 @@ mod tests {
         for env in Environment::PATH {
             p.promote(&v2, &inventory(env)).unwrap();
         }
-        assert_eq!(p.state(Environment::Production).active.as_ref().unwrap().version, "2.0.0");
+        assert_eq!(
+            p.state(Environment::Production)
+                .active
+                .as_ref()
+                .unwrap()
+                .version,
+            "2.0.0"
+        );
 
         let record = p.rollback().unwrap();
         assert!(record.within_sla, "rollback took {}ms", record.duration_ms);

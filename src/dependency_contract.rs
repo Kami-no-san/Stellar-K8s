@@ -79,7 +79,12 @@ pub struct SemVer {
 
 impl SemVer {
     pub fn new(major: u64, minor: u64, patch: u64) -> Self {
-        Self { major, minor, patch, pre: String::new() }
+        Self {
+            major,
+            minor,
+            patch,
+            pre: String::new(),
+        }
     }
 
     /// Parse `MAJOR.MINOR.PATCH[-pre]`. A leading `v` is accepted.
@@ -106,7 +111,12 @@ impl SemVer {
         if parts.next().is_some() {
             return Err(VersionParseError::new(raw));
         }
-        Ok(Self { major, minor, patch, pre })
+        Ok(Self {
+            major,
+            minor,
+            patch,
+            pre,
+        })
     }
 
     /// True when moving `self -> other` crosses a semver major boundary,
@@ -140,7 +150,9 @@ pub struct VersionParseError {
 
 impl VersionParseError {
     fn new(raw: &str) -> Self {
-        Self { raw: raw.to_string() }
+        Self {
+            raw: raw.to_string(),
+        }
     }
 }
 
@@ -190,7 +202,11 @@ pub struct DependencyRef {
 
 impl fmt::Display for DependencyRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ({} {} -> {})", self.name, self.kind, self.from, self.to)
+        write!(
+            f,
+            "{} ({} {} -> {})",
+            self.name, self.kind, self.from, self.to
+        )
     }
 }
 
@@ -234,10 +250,18 @@ pub struct BreakingChange {
 
 impl BreakingChange {
     pub fn new(api: &str, kind: BreakingChangeKind, detail: &str) -> Self {
-        Self { api: api.to_string(), kind, detail: detail.to_string() }
+        Self {
+            api: api.to_string(),
+            kind,
+            detail: detail.to_string(),
+        }
     }
     pub fn removed_api(api: &str) -> Self {
-        Self::new(api, BreakingChangeKind::RemovedApi, "symbol no longer exported")
+        Self::new(
+            api,
+            BreakingChangeKind::RemovedApi,
+            "symbol no longer exported",
+        )
     }
     pub fn changed_signature(api: &str, detail: &str) -> Self {
         Self::new(api, BreakingChangeKind::ChangedSignature, detail)
@@ -276,7 +300,12 @@ pub struct CallSite {
 impl CallSite {
     /// A call site with a single touched API.
     pub fn new(consumer: &str, file: &str, line: u32) -> Self {
-        Self { consumer: consumer.to_string(), file: file.to_string(), line, apis: Vec::new() }
+        Self {
+            consumer: consumer.to_string(),
+            file: file.to_string(),
+            line,
+            apis: Vec::new(),
+        }
     }
 
     pub fn touching(mut self, api: &str) -> Self {
@@ -367,7 +396,13 @@ impl ContractTest {
 
 fn sanitize_ident(id: &str) -> String {
     id.chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -463,7 +498,11 @@ impl ContractTestGenerator {
 
 fn assertion_for(api: &str) -> Assertion {
     let leaf = api.rsplit("::").next().unwrap_or(api);
-    if leaf.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c == '-') && !leaf.is_empty() {
+    if leaf
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c == '_' || c == '-')
+        && !leaf.is_empty()
+    {
         Assertion::ConfigKeyHonoured
     } else {
         Assertion::ApiResolves
@@ -518,10 +557,17 @@ pub struct CompatibilityMatrix {
 
 impl CompatibilityMatrix {
     /// Build the matrix from call sites and the proposed breaking changes.
-    pub fn construct(dependency: &str, call_sites: &[CallSite], changes: &[BreakingChange]) -> Self {
+    pub fn construct(
+        dependency: &str,
+        call_sites: &[CallSite],
+        changes: &[BreakingChange],
+    ) -> Self {
         let mut per_consumer: BTreeMap<&str, Vec<&CallSite>> = BTreeMap::new();
         for site in call_sites {
-            per_consumer.entry(site.consumer.as_str()).or_default().push(site);
+            per_consumer
+                .entry(site.consumer.as_str())
+                .or_default()
+                .push(site);
         }
 
         let mut cells = Vec::new();
@@ -530,7 +576,11 @@ impl CompatibilityMatrix {
             let mut evidence: BTreeSet<String> = BTreeSet::new();
             let mut fatal = false;
             for change in changes {
-                let hit: Vec<&CallSite> = sites.iter().copied().filter(|s| s.touches(&change.api)).collect();
+                let hit: Vec<&CallSite> = sites
+                    .iter()
+                    .copied()
+                    .filter(|s| s.touches(&change.api))
+                    .collect();
                 if hit.is_empty() {
                     continue;
                 }
@@ -567,31 +617,50 @@ impl CompatibilityMatrix {
 
     /// Every consumer blocked by the proposed upgrade, worst first.
     pub fn blocked_consumers(&self) -> Vec<&MatrixCell> {
-        self.cells.iter().filter(|c| c.status == CellStatus::Incompatible).collect()
+        self.cells
+            .iter()
+            .filter(|c| c.status == CellStatus::Incompatible)
+            .collect()
     }
 
     /// Consumers needing human sign-off (behaviour-only changes).
     pub fn unverified_consumers(&self) -> Vec<&MatrixCell> {
-        self.cells.iter().filter(|c| c.status == CellStatus::Unverified).collect()
+        self.cells
+            .iter()
+            .filter(|c| c.status == CellStatus::Unverified)
+            .collect()
     }
 
     pub fn compatible_count(&self) -> usize {
-        self.cells.iter().filter(|c| c.status == CellStatus::Compatible).count()
+        self.cells
+            .iter()
+            .filter(|c| c.status == CellStatus::Compatible)
+            .count()
     }
 
     /// Render the matrix as a Markdown table for the PR comment.
     pub fn to_markdown(&self) -> String {
-        let mut out = String::from(
-            "| Consumer | Status | Cause | Call sites |\n|---|---|---|---|\n",
-        );
+        let mut out =
+            String::from("| Consumer | Status | Cause | Call sites |\n|---|---|---|---|\n");
         if self.cells.is_empty() {
             out.push_str("| _no consumers_ | - | - | - |\n");
             return out;
         }
         for cell in &self.cells {
-            let cause = if cell.causes.is_empty() { "-".to_string() } else { cell.causes.join("<br>") };
-            let sites = if cell.call_sites.is_empty() { "-".to_string() } else { cell.call_sites.join("<br>") };
-            out.push_str(&format!("| `{}` | {} | {} | {} |\n", cell.consumer, cell.status, cause, sites));
+            let cause = if cell.causes.is_empty() {
+                "-".to_string()
+            } else {
+                cell.causes.join("<br>")
+            };
+            let sites = if cell.call_sites.is_empty() {
+                "-".to_string()
+            } else {
+                cell.call_sites.join("<br>")
+            };
+            out.push_str(&format!(
+                "| `{}` | {} | {} | {} |\n",
+                cell.consumer, cell.status, cause, sites
+            ));
         }
         out
     }
@@ -684,7 +753,12 @@ impl UpgradeProposalBuilder {
     pub fn build(self) -> UpgradeProposal {
         UpgradeProposal {
             pr_number: self.pr_number,
-            dependency: DependencyRef { name: self.name, kind: self.kind, from: self.from, to: self.to },
+            dependency: DependencyRef {
+                name: self.name,
+                kind: self.kind,
+                from: self.from,
+                to: self.to,
+            },
             breaking_changes: self.breaking_changes,
             call_sites: self.call_sites,
         }
@@ -825,7 +899,11 @@ impl UpgradeReport {
                 "  - {} blocked: {} (call sites: {})",
                 a.consumer,
                 a.reasons.join("; "),
-                if a.call_sites.is_empty() { "unknown".to_string() } else { a.call_sites.join(", ") }
+                if a.call_sites.is_empty() {
+                    "unknown".to_string()
+                } else {
+                    a.call_sites.join(", ")
+                }
             ));
         }
         lines
@@ -847,7 +925,10 @@ pub struct UpgradeValidator {
 
 impl UpgradeValidator {
     pub fn new() -> Self {
-        Self { generator: ContractTestGenerator::new(), enforce_budget: true }
+        Self {
+            generator: ContractTestGenerator::new(),
+            enforce_budget: true,
+        }
     }
 
     /// Validate an upgrade proposal.
@@ -865,14 +946,21 @@ impl UpgradeValidator {
 
         let mut reasons: Vec<String> = Vec::new();
 
-        let major_bump = proposal.dependency.from.is_major_bump_from(&proposal.dependency.to);
+        let major_bump = proposal
+            .dependency
+            .from
+            .is_major_bump_from(&proposal.dependency.to);
         if major_bump {
             reasons.push(format!(
                 "semver major bump {} -> {} is breaking by definition",
                 proposal.dependency.from, proposal.dependency.to
             ));
         }
-        if !proposal.dependency.from.is_upgrade_over(&proposal.dependency.to) {
+        if !proposal
+            .dependency
+            .from
+            .is_upgrade_over(&proposal.dependency.to)
+        {
             reasons.push(format!(
                 "proposed version {} is not newer than {}",
                 proposal.dependency.to, proposal.dependency.from
@@ -896,8 +984,16 @@ impl UpgradeValidator {
             reasons.push(format!(
                 "consumer `{}` breaks: {} (call sites: {})",
                 cell.consumer,
-                if cell.causes.is_empty() { "incompatible".to_string() } else { cell.causes.join("; ") },
-                if cell.call_sites.is_empty() { "unknown".to_string() } else { cell.call_sites.join(", ") }
+                if cell.causes.is_empty() {
+                    "incompatible".to_string()
+                } else {
+                    cell.causes.join("; ")
+                },
+                if cell.call_sites.is_empty() {
+                    "unknown".to_string()
+                } else {
+                    cell.call_sites.join(", ")
+                }
             ));
         }
 
@@ -918,7 +1014,11 @@ impl UpgradeValidator {
             );
         }
 
-        let verdict = if reasons.is_empty() { Verdict::Approved } else { Verdict::Blocked };
+        let verdict = if reasons.is_empty() {
+            Verdict::Approved
+        } else {
+            Verdict::Blocked
+        };
 
         let reason = if verdict == Verdict::Approved {
             format!(
@@ -945,7 +1045,11 @@ impl UpgradeValidator {
         let generated_at = Utc::now();
         let artifact = if verdict == Verdict::Approved {
             let mut artifact = ValidationArtifact {
-                artifact_id: format!("depval-pr{}-{}", proposal.pr_number, &digest_of(&suite)[..12]),
+                artifact_id: format!(
+                    "depval-pr{}-{}",
+                    proposal.pr_number,
+                    &digest_of(&suite)[..12]
+                ),
                 pr_number: proposal.pr_number,
                 dependency: proposal.dependency.name.clone(),
                 kind: proposal.dependency.kind,
@@ -1046,14 +1150,22 @@ impl Consumer {
             "chrono" => (
                 "stellar-telemetry",
                 kind,
-                vec![
-                    CallSite::new("stellar-telemetry", "src/telemetry.rs", 140).touching("chrono::DateTime"),
-                ],
+                vec![CallSite::new("stellar-telemetry", "src/telemetry.rs", 140)
+                    .touching("chrono::DateTime")],
             ),
-            "reqwest" => ("stellar-sidecar", kind, vec![CallSite::new("stellar-sidecar", "src/sidecar.rs", 402).touching("reqwest::Client::get")]),
+            "reqwest" => (
+                "stellar-sidecar",
+                kind,
+                vec![CallSite::new("stellar-sidecar", "src/sidecar.rs", 402)
+                    .touching("reqwest::Client::get")],
+            ),
             _ => return None,
         };
-        Some(Consumer { name, kind, call_sites })
+        Some(Consumer {
+            name,
+            kind,
+            call_sites,
+        })
     }
 }
 
@@ -1099,13 +1211,26 @@ mod tests {
     #[test]
     fn generates_one_contract_test_per_consumer_api_pair() {
         let sites = vec![
-            site("stellar-controller", "src/controller/reconcile.rs", 118, "k8s_openapi::api::core::v1::PodSpec"),
-            site("stellar-controller", "src/controller/resources.rs", 77, "k8s_openapi::api::core::v1::PodStatus"),
+            site(
+                "stellar-controller",
+                "src/controller/reconcile.rs",
+                118,
+                "k8s_openapi::api::core::v1::PodSpec",
+            ),
+            site(
+                "stellar-controller",
+                "src/controller/resources.rs",
+                77,
+                "k8s_openapi::api::core::v1::PodStatus",
+            ),
             site("stellar-operator", "src/main.rs", 62, "kube::Client"),
         ];
         let suite = ContractTestGenerator::new().generate(&sites);
         assert_eq!(suite.tests.len(), 3);
-        assert_eq!(suite.consumers, vec!["stellar-controller", "stellar-operator"]);
+        assert_eq!(
+            suite.consumers,
+            vec!["stellar-controller", "stellar-operator"]
+        );
         assert!(suite.within_budget());
         // Generation is deterministic.
         let again = ContractTestGenerator::new().generate(&sites);
@@ -1115,8 +1240,18 @@ mod tests {
     #[test]
     fn deduplicates_repeated_consumer_api_pairs() {
         let sites = vec![
-            site("stellar-webhook", "src/webhook/admission.rs", 88, "serde_yaml::from_slice"),
-            site("stellar-webhook", "src/webhook/admission.rs", 120, "serde_yaml::from_slice"),
+            site(
+                "stellar-webhook",
+                "src/webhook/admission.rs",
+                88,
+                "serde_yaml::from_slice",
+            ),
+            site(
+                "stellar-webhook",
+                "src/webhook/admission.rs",
+                120,
+                "serde_yaml::from_slice",
+            ),
         ];
         let suite = ContractTestGenerator::new().generate(&sites);
         assert_eq!(suite.tests.len(), 1);
@@ -1126,8 +1261,18 @@ mod tests {
     #[test]
     fn generated_suite_compiles_as_rust_source() {
         let sites = vec![
-            site("stellar-controller", "src/controller/reconcile.rs", 118, "k8s_openapi::api::core::v1::PodSpec"),
-            site("stellar-telemetry", "src/telemetry.rs", 140, "replica_count"),
+            site(
+                "stellar-controller",
+                "src/controller/reconcile.rs",
+                118,
+                "k8s_openapi::api::core::v1::PodSpec",
+            ),
+            site(
+                "stellar-telemetry",
+                "src/telemetry.rs",
+                140,
+                "replica_count",
+            ),
         ];
         let suite = ContractTestGenerator::new().generate(&sites);
         let src = suite.to_rust_module();
@@ -1137,7 +1282,10 @@ mod tests {
         // Every generated fn name is a valid Rust identifier.
         for line in src.lines().filter(|l| l.starts_with("fn ")) {
             let name = line.trim_start_matches("fn ").trim_end_matches("() {");
-            assert!(name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'), "bad ident {name}");
+            assert!(
+                name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
+                "bad ident {name}"
+            );
             assert!(!name.chars().next().unwrap().is_ascii_digit());
         }
     }
@@ -1147,31 +1295,62 @@ mod tests {
     #[test]
     fn matrix_marks_untouched_consumers_compatible() {
         let sites = vec![
-            site("stellar-controller", "src/controller/reconcile.rs", 118, "k8s_openapi::api::core::v1::PodSpec"),
+            site(
+                "stellar-controller",
+                "src/controller/reconcile.rs",
+                118,
+                "k8s_openapi::api::core::v1::PodSpec",
+            ),
             site("stellar-operator", "src/main.rs", 62, "kube::Client"),
         ];
-        let changes = vec![BreakingChange::removed_api("k8s_openapi::api::core::v1::PodSpec")];
+        let changes = vec![BreakingChange::removed_api(
+            "k8s_openapi::api::core::v1::PodSpec",
+        )];
         let m = CompatibilityMatrix::construct("k8s-openapi", &sites, &changes);
-        assert_eq!(m.cell_for("stellar-controller").unwrap().status, CellStatus::Incompatible);
-        assert_eq!(m.cell_for("stellar-operator").unwrap().status, CellStatus::Compatible);
+        assert_eq!(
+            m.cell_for("stellar-controller").unwrap().status,
+            CellStatus::Incompatible
+        );
+        assert_eq!(
+            m.cell_for("stellar-operator").unwrap().status,
+            CellStatus::Compatible
+        );
         assert_eq!(m.compatible_count(), 1);
         assert_eq!(m.blocked_consumers().len(), 1);
     }
 
     #[test]
     fn behaviour_only_change_degrades_to_unverified_not_blocked() {
-        let sites = vec![site("stellar-sidecar", "src/sidecar.rs", 402, "reqwest::Client::get")];
-        let changes = vec![BreakingChange::behavior_change("reqwest::Client::get", "default timeout changed")];
+        let sites = vec![site(
+            "stellar-sidecar",
+            "src/sidecar.rs",
+            402,
+            "reqwest::Client::get",
+        )];
+        let changes = vec![BreakingChange::behavior_change(
+            "reqwest::Client::get",
+            "default timeout changed",
+        )];
         let m = CompatibilityMatrix::construct("reqwest", &sites, &changes);
-        assert_eq!(m.cell_for("stellar-sidecar").unwrap().status, CellStatus::Unverified);
+        assert_eq!(
+            m.cell_for("stellar-sidecar").unwrap().status,
+            CellStatus::Unverified
+        );
         assert!(m.blocked_consumers().is_empty());
         assert_eq!(m.unverified_consumers().len(), 1);
     }
 
     #[test]
     fn matrix_digest_is_stable_and_rendered() {
-        let sites = vec![site("stellar-controller", "src/controller/reconcile.rs", 118, "k8s_openapi::api::core::v1::PodSpec")];
-        let changes = vec![BreakingChange::removed_api("k8s_openapi::api::core::v1::PodSpec")];
+        let sites = vec![site(
+            "stellar-controller",
+            "src/controller/reconcile.rs",
+            118,
+            "k8s_openapi::api::core::v1::PodSpec",
+        )];
+        let changes = vec![BreakingChange::removed_api(
+            "k8s_openapi::api::core::v1::PodSpec",
+        )];
         let m1 = CompatibilityMatrix::construct("k8s-openapi", &sites, &changes);
         let m2 = CompatibilityMatrix::construct("k8s-openapi", &sites, &changes);
         assert_eq!(m1.digest(), m2.digest());
@@ -1189,15 +1368,24 @@ mod tests {
             .pr(1520)
             .from("0.22.0")
             .to("0.22.1")
-            .call_site(site("stellar-controller", "src/controller/reconcile.rs", 118, "k8s_openapi::api::core::v1::PodSpec"))
+            .call_site(site(
+                "stellar-controller",
+                "src/controller/reconcile.rs",
+                118,
+                "k8s_openapi::api::core::v1::PodSpec",
+            ))
             .build();
         let report = UpgradeValidator::new().validate(&proposal);
         assert_eq!(report.verdict, Verdict::Approved);
         assert!(report.attribution.is_empty());
-        let artifact = report.artifact.expect("approved upgrades carry an artifact");
+        let artifact = report
+            .artifact
+            .expect("approved upgrades carry an artifact");
         assert!(artifact.verify(), "artifact signature must verify");
         assert_eq!(artifact.generated_tests, 1);
-        assert!(artifact.to_markdown(&report.matrix).contains("Compatibility matrix"));
+        assert!(artifact
+            .to_markdown(&report.matrix)
+            .contains("Compatibility matrix"));
         assert!(artifact.to_json().contains("suite_digest"));
     }
 
@@ -1207,9 +1395,17 @@ mod tests {
             .pr(1)
             .from("0.4.0")
             .to("0.4.1")
-            .call_site(site("stellar-telemetry", "src/telemetry.rs", 140, "chrono::DateTime"))
+            .call_site(site(
+                "stellar-telemetry",
+                "src/telemetry.rs",
+                140,
+                "chrono::DateTime",
+            ))
             .build();
-        let mut artifact = UpgradeValidator::new().validate(&proposal).artifact.unwrap();
+        let mut artifact = UpgradeValidator::new()
+            .validate(&proposal)
+            .artifact
+            .unwrap();
         assert!(artifact.verify());
         artifact.generated_tests = 999;
         assert!(!artifact.verify());
@@ -1221,15 +1417,28 @@ mod tests {
             .pr(1501)
             .from("0.22.0")
             .to("0.22.1")
-            .breaking_change(BreakingChange::removed_api("k8s_openapi::api::core::v1::PodStatus"))
-            .call_site(site("stellar-controller", "src/controller/resources.rs", 77, "k8s_openapi::api::core::v1::PodStatus"))
+            .breaking_change(BreakingChange::removed_api(
+                "k8s_openapi::api::core::v1::PodStatus",
+            ))
+            .call_site(site(
+                "stellar-controller",
+                "src/controller/resources.rs",
+                77,
+                "k8s_openapi::api::core::v1::PodStatus",
+            ))
             .build();
         let report = UpgradeValidator::new().validate(&proposal);
         assert!(report.is_blocked());
-        assert!(report.artifact.is_none(), "blocked upgrades must not carry an artifact");
+        assert!(
+            report.artifact.is_none(),
+            "blocked upgrades must not carry an artifact"
+        );
         assert_eq!(report.attribution.len(), 1);
         assert_eq!(report.attribution[0].consumer, "stellar-controller");
-        assert_eq!(report.attribution[0].call_sites, vec!["src/controller/resources.rs:77"]);
+        assert_eq!(
+            report.attribution[0].call_sites,
+            vec!["src/controller/resources.rs:77"]
+        );
         assert!(report.reason.contains("stellar-controller"));
         let lines = report.block_reason_lines();
         assert!(lines.len() >= 2);
@@ -1269,35 +1478,74 @@ mod tests {
             .pr(2001)
             .from("0.22.0")
             .to("0.22.1")
-            .breaking_change(BreakingChange::removed_api("k8s_openapi::api::core::v1::PodStatus"))
-            .call_site(site("stellar-controller", "src/controller/resources.rs", 77, "k8s_openapi::api::core::v1::PodStatus"))
-            .call_site(site("stellar-controller", "src/scheduler/constraints.rs", 45, "k8s_openapi::api::core::v1::Toleration"))
+            .breaking_change(BreakingChange::removed_api(
+                "k8s_openapi::api::core::v1::PodStatus",
+            ))
+            .call_site(site(
+                "stellar-controller",
+                "src/controller/resources.rs",
+                77,
+                "k8s_openapi::api::core::v1::PodStatus",
+            ))
+            .call_site(site(
+                "stellar-controller",
+                "src/scheduler/constraints.rs",
+                45,
+                "k8s_openapi::api::core::v1::Toleration",
+            ))
             .build();
         // Trial 2: changed signature of an API the operator calls.
         let t2 = UpgradeProposal::builder("kube", DependencyKind::Library)
             .pr(2002)
             .from("0.94.0")
             .to("0.94.1")
-            .breaking_change(BreakingChange::changed_signature("kube::Client::get", "now takes a resource name enum"))
-            .call_site(site("stellar-operator", "src/main.rs", 62, "kube::Client::get"))
+            .breaking_change(BreakingChange::changed_signature(
+                "kube::Client::get",
+                "now takes a resource name enum",
+            ))
+            .call_site(site(
+                "stellar-operator",
+                "src/main.rs",
+                62,
+                "kube::Client::get",
+            ))
             .build();
         // Trial 3: removed config key consumed by the webhook.
         let t3 = UpgradeProposal::builder("serde_yaml", DependencyKind::Library)
             .pr(2003)
             .from("0.9.0")
             .to("0.9.1")
-            .breaking_change(BreakingChange::renamed_config_key("admission_timeout_secs", "renamed to admissionTimeoutSeconds"))
-            .call_site(site("stellar-webhook", "src/webhook/admission.rs", 88, "admission_timeout_secs"))
+            .breaking_change(BreakingChange::renamed_config_key(
+                "admission_timeout_secs",
+                "renamed to admissionTimeoutSeconds",
+            ))
+            .call_site(site(
+                "stellar-webhook",
+                "src/webhook/admission.rs",
+                88,
+                "admission_timeout_secs",
+            ))
             .build();
 
-        for (trial, proposal, expect_consumer) in
-            [("trial-1", t1, "stellar-controller"), ("trial-2", t2, "stellar-operator"), ("trial-3", t3, "stellar-webhook")]
-        {
+        for (trial, proposal, expect_consumer) in [
+            ("trial-1", t1, "stellar-controller"),
+            ("trial-2", t2, "stellar-operator"),
+            ("trial-3", t3, "stellar-webhook"),
+        ] {
             let report = UpgradeValidator::new().validate(&proposal);
             assert!(report.is_blocked(), "{trial} must be blocked");
-            assert!(!report.attribution.is_empty(), "{trial} must attribute a consumer");
-            assert_eq!(report.attribution[0].consumer, expect_consumer, "{trial} attribution");
-            assert!(report.reason.contains(expect_consumer), "{trial} reason must name the consumer");
+            assert!(
+                !report.attribution.is_empty(),
+                "{trial} must attribute a consumer"
+            );
+            assert_eq!(
+                report.attribution[0].consumer, expect_consumer,
+                "{trial} attribution"
+            );
+            assert!(
+                report.reason.contains(expect_consumer),
+                "{trial} reason must name the consumer"
+            );
             assert!(report.artifact.is_none(), "{trial} must not be approved");
         }
     }
@@ -1316,7 +1564,11 @@ mod tests {
         }
         let suite = ContractTestGenerator::new().generate(&sites);
         assert_eq!(suite.tests.len(), 10_000);
-        assert!(suite.within_budget(), "generation took {:?}", suite.generation_time);
+        assert!(
+            suite.within_budget(),
+            "generation took {:?}",
+            suite.generation_time
+        );
         assert!(suite.generation_time < SUITE_GENERATION_BUDGET);
     }
 
@@ -1324,16 +1576,40 @@ mod tests {
     fn harvest_returns_real_consumer_call_sites() {
         let consumers = known_consumers("stellar-controller");
         assert!(!consumers.is_empty());
-        assert!(consumers.iter().all(|c| c.call_sites.iter().all(|s| s.consumer == "stellar-controller")));
+        assert!(consumers.iter().all(|c| c
+            .call_sites
+            .iter()
+            .all(|s| s.consumer == "stellar-controller")));
         assert!(Consumer::harvest("unknown-dep", DependencyKind::Library).is_none());
     }
 
     #[test]
     fn three_known_compatible_upgrades_are_approved() {
         for (pr, dep, from, to, consumer, api) in [
-            (3001u64, "k8s-openapi", "0.22.0", "0.22.1", "stellar-controller", "k8s_openapi::api::core::v1::PodSpec"),
-            (3002, "chrono", "0.4.0", "0.4.1", "stellar-telemetry", "chrono::DateTime"),
-            (3003, "reqwest", "0.12.0", "0.12.1", "stellar-sidecar", "reqwest::Client::get"),
+            (
+                3001u64,
+                "k8s-openapi",
+                "0.22.0",
+                "0.22.1",
+                "stellar-controller",
+                "k8s_openapi::api::core::v1::PodSpec",
+            ),
+            (
+                3002,
+                "chrono",
+                "0.4.0",
+                "0.4.1",
+                "stellar-telemetry",
+                "chrono::DateTime",
+            ),
+            (
+                3003,
+                "reqwest",
+                "0.12.0",
+                "0.12.1",
+                "stellar-sidecar",
+                "reqwest::Client::get",
+            ),
         ] {
             let proposal = UpgradeProposal::builder(dep, DependencyKind::Library)
                 .pr(pr)
@@ -1342,7 +1618,11 @@ mod tests {
                 .call_site(site(consumer, "src/lib.rs", 10, api))
                 .build();
             let report = UpgradeValidator::new().validate(&proposal);
-            assert_eq!(report.verdict, Verdict::Approved, "pr {pr} should be approved");
+            assert_eq!(
+                report.verdict,
+                Verdict::Approved,
+                "pr {pr} should be approved"
+            );
             assert!(report.artifact.unwrap().verify());
         }
     }

@@ -26,7 +26,9 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signer, SigningKey};
-use k8s_openapi::api::core::v1::{NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm};
+use k8s_openapi::api::core::v1::{
+    NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm,
+};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -111,7 +113,8 @@ impl ResidencyPolicy {
     }
 
     pub fn insert(&mut self, rule: ResidencyRule) {
-        self.rules.insert((rule.dataset.clone(), rule.tenant.clone()), rule);
+        self.rules
+            .insert((rule.dataset.clone(), rule.tenant.clone()), rule);
     }
 
     pub fn rule_for(&self, dataset: &str, tenant: &str) -> Option<&ResidencyRule> {
@@ -138,12 +141,20 @@ impl ResidencyPolicy {
     /// Scheduler predicate: is a node in `region` feasible for this workload?
     /// Unknown (dataset, tenant) pairs are denied closed (fail-safe).
     pub fn node_feasible(&self, dataset: &str, tenant: &str, region: &str) -> bool {
-        self.rule_for(dataset, tenant).map(|r| r.allows_region(region)).unwrap_or(false)
+        self.rule_for(dataset, tenant)
+            .map(|r| r.allows_region(region))
+            .unwrap_or(false)
     }
 
     /// Block a violating placement with a clear, auditable denial reason.
     /// Returns `Ok(())` when allowed, `Err(reason)` when blocked.
-    pub fn admit(&self, dataset: &str, tenant: &str, region: &str, workload: &str) -> Result<(), String> {
+    pub fn admit(
+        &self,
+        dataset: &str,
+        tenant: &str,
+        region: &str,
+        workload: &str,
+    ) -> Result<(), String> {
         match self.rule_for(dataset, tenant) {
             None => Err(format!(
                 "residency denied: workload {workload} dataset {dataset} tenant {tenant} has no residency rule; default-deny (fail-safe)"
@@ -177,7 +188,10 @@ impl ResidencyPolicy {
                     .unwrap_or_default(),
             })
             .collect();
-        CoverageReport { generated_at: Utc::now(), entries }
+        CoverageReport {
+            generated_at: Utc::now(),
+            entries,
+        }
     }
 }
 
@@ -265,7 +279,10 @@ pub struct ResidencyEvidence {
     pub zero_violations_30d: bool,
 }
 
-pub fn export_evidence(coverage: CoverageReport, violations: Vec<SignedResidencyEvent>) -> ResidencyEvidence {
+pub fn export_evidence(
+    coverage: CoverageReport,
+    violations: Vec<SignedResidencyEvent>,
+) -> ResidencyEvidence {
     // Zero-violation claim holds when no violations are recorded in the
     // export window; callers pass the trailing-30d violation list.
     let zero = violations.is_empty();
@@ -284,15 +301,23 @@ mod tests {
 
     fn policy() -> ResidencyPolicy {
         let mut p = ResidencyPolicy::new();
-        p.insert(ResidencyRule::new("ledger", "tenant-a", vec!["eu-west-1".to_string(), "eu-central-1".to_string()]));
+        p.insert(ResidencyRule::new(
+            "ledger",
+            "tenant-a",
+            vec!["eu-west-1".to_string(), "eu-central-1".to_string()],
+        ));
         p
     }
 
     #[test]
     fn allowed_region_passes_forbidden_blocked_with_reason() {
         let p = policy();
-        assert!(p.admit("ledger", "tenant-a", "eu-west-1", "stellar-node-0").is_ok());
-        let err = p.admit("ledger", "tenant-a", "us-east-1", "stellar-node-0").unwrap_err();
+        assert!(p
+            .admit("ledger", "tenant-a", "eu-west-1", "stellar-node-0")
+            .is_ok());
+        let err = p
+            .admit("ledger", "tenant-a", "us-east-1", "stellar-node-0")
+            .unwrap_err();
         assert!(err.contains("residency denied"));
         assert!(err.contains("eu-west-1"));
     }
@@ -315,15 +340,28 @@ mod tests {
             .as_ref()
             .unwrap()[0];
         assert_eq!(expr.key, DEFAULT_REGION_LABEL_KEY);
-        assert_eq!(expr.values.as_ref().unwrap(), &vec!["eu-west-1".to_string()]);
+        assert_eq!(
+            expr.values.as_ref().unwrap(),
+            &vec!["eu-west-1".to_string()]
+        );
         let topo = rule.pvc_allowed_topologies();
         assert_eq!(topo.len(), 1);
-        assert_eq!(topo[0][DEFAULT_REGION_LABEL_KEY], vec!["eu-west-1".to_string()]);
+        assert_eq!(
+            topo[0][DEFAULT_REGION_LABEL_KEY],
+            vec!["eu-west-1".to_string()]
+        );
     }
 
     #[test]
     fn signed_violation_event_verifies_shape() {
-        let signed = sign_violation("w", "ledger", "tenant-a", "us-east-1", &["eu-west-1".to_string()], "denied");
+        let signed = sign_violation(
+            "w",
+            "ledger",
+            "tenant-a",
+            "us-east-1",
+            &["eu-west-1".to_string()],
+            "denied",
+        );
         assert_eq!(signed.payload.requested_region, "us-east-1");
         assert_eq!(signed.sha256.len(), 64);
         assert!(!signed.signature.is_empty());
@@ -334,8 +372,16 @@ mod tests {
     fn coverage_lists_every_workload_and_flags_uncovered() {
         let p = policy();
         let report = p.coverage_report(&[
-            ("node-0".to_string(), "ledger".to_string(), "tenant-a".to_string()),
-            ("node-1".to_string(), "ledger".to_string(), "tenant-b".to_string()),
+            (
+                "node-0".to_string(),
+                "ledger".to_string(),
+                "tenant-a".to_string(),
+            ),
+            (
+                "node-1".to_string(),
+                "ledger".to_string(),
+                "tenant-b".to_string(),
+            ),
         ]);
         assert_eq!(report.entries.len(), 2);
         assert_eq!(report.uncovered().len(), 1);

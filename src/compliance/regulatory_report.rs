@@ -23,8 +23,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::crd::compliance_report::{
-    ComplianceReportFormat, ComplianceReportSpec, KeyCustodyAttestation,
-    TxProcessingEvidence, ValidatorUptimeEvidence,
+    ComplianceReportFormat, ComplianceReportSpec, KeyCustodyAttestation, TxProcessingEvidence,
+    ValidatorUptimeEvidence,
 };
 use crate::error::{Error, Result};
 
@@ -65,7 +65,8 @@ impl RegulatoryReportGenerator {
         // 1. Calculate Uptime and Availability Evidence
         let uptime_percentage = measured_uptime_pct.unwrap_or(99.98);
         let total_seconds = (days * 86400) as u64;
-        let downtime_seconds = ((1.0 - (uptime_percentage / 100.0)) * total_seconds as f64).round() as u64;
+        let downtime_seconds =
+            ((1.0 - (uptime_percentage / 100.0)) * total_seconds as f64).round() as u64;
         let met_sla = uptime_percentage >= 99.0;
 
         let uptime_evidence = ValidatorUptimeEvidence {
@@ -130,9 +131,18 @@ impl RegulatoryReportGenerator {
         };
 
         let mut notes = Vec::new();
-        notes.push("Uptime evidence cross-referenced against Prometheus scrapes and /info endpoint.".to_string());
-        notes.push("Key custody verified against Cloud KMS cryptographic boundary with HSM enforcement.".to_string());
-        notes.push("Ledger closing consensus participation verified against SCP protocol metrics.".to_string());
+        notes.push(
+            "Uptime evidence cross-referenced against Prometheus scrapes and /info endpoint."
+                .to_string(),
+        );
+        notes.push(
+            "Key custody verified against Cloud KMS cryptographic boundary with HSM enforcement."
+                .to_string(),
+        );
+        notes.push(
+            "Ledger closing consensus participation verified against SCP protocol metrics."
+                .to_string(),
+        );
 
         RegulatoryReportData {
             report_id: format!("audit-report-{}-{}", spec.validator_ref, now.timestamp()),
@@ -198,7 +208,10 @@ impl RegulatoryReportGenerator {
         );
 
         layer.use_text(
-            format!("Target Validator: {} (Namespace: {})", data.validator_name, data.namespace),
+            format!(
+                "Target Validator: {} (Namespace: {})",
+                data.validator_name, data.namespace
+            ),
             11.0,
             Mm(15.0),
             Mm(265.0),
@@ -238,7 +251,10 @@ impl RegulatoryReportGenerator {
         current_y -= 7.0;
 
         layer.use_text(
-            format!("Observed Uptime: {:.3}%", data.uptime_evidence.uptime_percentage),
+            format!(
+                "Observed Uptime: {:.3}%",
+                data.uptime_evidence.uptime_percentage
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -247,7 +263,10 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Downtime Recorded: {} seconds (out of {} monitored seconds)", data.uptime_evidence.downtime_seconds, data.uptime_evidence.total_seconds),
+            format!(
+                "Downtime Recorded: {} seconds (out of {} monitored seconds)",
+                data.uptime_evidence.downtime_seconds, data.uptime_evidence.total_seconds
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -256,7 +275,14 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Regulatory SLA Met (>= 99.0%): {}", if data.uptime_evidence.met_sla { "YES (PASSED)" } else { "NO (FAILED)" }),
+            format!(
+                "Regulatory SLA Met (>= 99.0%): {}",
+                if data.uptime_evidence.met_sla {
+                    "YES (PASSED)"
+                } else {
+                    "NO (FAILED)"
+                }
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -293,7 +319,14 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Hardware Security Module (HSM) Enforced: {}", if data.key_custody.hsm_backed { "YES (FIPS 140-2 Level 3)" } else { "NO" }),
+            format!(
+                "Hardware Security Module (HSM) Enforced: {}",
+                if data.key_custody.hsm_backed {
+                    "YES (FIPS 140-2 Level 3)"
+                } else {
+                    "NO"
+                }
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -302,7 +335,10 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Attestation Digest (SHA-256): {}", data.key_custody.attestation_digest),
+            format!(
+                "Attestation Digest (SHA-256): {}",
+                data.key_custody.attestation_digest
+            ),
             8.0,
             Mm(15.0),
             Mm(current_y),
@@ -330,7 +366,10 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Transactions Validated: {}", data.tx_processing.tx_count_processed),
+            format!(
+                "Transactions Validated: {}",
+                data.tx_processing.tx_count_processed
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -339,7 +378,10 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Average Ledger Close Latency: {:.1} ms", data.tx_processing.avg_ledger_close_time_ms),
+            format!(
+                "Average Ledger Close Latency: {:.1} ms",
+                data.tx_processing.avg_ledger_close_time_ms
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -348,7 +390,10 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Consensus Participation Rate: {:.2}%", data.tx_processing.consensus_participation_rate),
+            format!(
+                "Consensus Participation Rate: {:.2}%",
+                data.tx_processing.consensus_participation_rate
+            ),
             10.0,
             Mm(15.0),
             Mm(current_y),
@@ -367,7 +412,10 @@ impl RegulatoryReportGenerator {
         current_y -= 6.0;
 
         layer.use_text(
-            format!("Certified by Stellar-K8s Regulatory Reporting Controller v{}", env!("CARGO_PKG_VERSION")),
+            format!(
+                "Certified by Stellar-K8s Regulatory Reporting Controller v{}",
+                env!("CARGO_PKG_VERSION")
+            ),
             9.0,
             Mm(15.0),
             Mm(current_y),

@@ -32,8 +32,8 @@ async fn main() -> Result<()> {
 
     let namespace = env::var("NAMESPACE")
         .map_err(|_| Error::config_step("load NAMESPACE", "env var not set"))?;
-    let pod_name = env::var("POD_NAME")
-        .map_err(|_| Error::config_step("load POD_NAME", "env var not set"))?;
+    let pod_name =
+        env::var("POD_NAME").map_err(|_| Error::config_step("load POD_NAME", "env var not set"))?;
     let container_name =
         env::var("CONTAINER_NAME").unwrap_or_else(|_| "stellar-operator".to_string());
 

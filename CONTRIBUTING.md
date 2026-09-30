@@ -239,6 +239,26 @@ script it exercises, then:
 is the canonical example: it shows the expected file layout, helper loading, and
 assertion style to follow when adding new suites.
 
+### Operational scripts index
+
+[`scripts/README.md`](scripts/README.md) indexes every operational script in the
+repository: what it does, the canonical invocation (and the `make` target that
+wraps it, where one exists), and the suite in `scripts/tests/` that covers it. It
+also separates the CI-only helpers in `scripts/ci/` from the scripts you are
+expected to run locally.
+
+To lint the GitHub issue templates locally — the same check CI runs when
+`.github/ISSUE_TEMPLATE/` changes:
+
+```bash
+python3 scripts/issue_template_lint.py
+```
+
+The command exits non-zero and lists every offending template when an Issue Form
+is missing required keys (`name`, `description`, `body`), uses an unsupported
+`body` field type, or has a malformed `config.yml`. It is also part of
+`make health`.
+
 ## 8. Coding Standards
 
 - Format Rust code with `make fmt`.

@@ -2269,55 +2269,83 @@ mod sidecar_peer_env {
 #[test]
 fn test_readiness_probe_accepts_synced_state() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+
     
     let probe = super::default_readiness_probe(&NodeType::Validator);
     
     // Verify the probe is an exec probe
-    assert!(probe.exec.is_some(), "Validator readiness probe must be an exec probe");
-    
+    assert!(
+        probe.exec.is_some(),
+        "Validator readiness probe must be an exec probe"
+    );
+
     let exec_action = probe.exec.unwrap();
     let command = exec_action.command.unwrap();
-    
+
     // Verify the script structure
     assert_eq!(command[0], "/bin/sh");
     assert_eq!(command[1], "-c");
-    
+
     let script = &command[2];
-    
+
     // Verify the script checks for Synced! state
-    assert!(script.contains("Synced!"), "Script must check for Synced! state");
-    assert!(script.contains("exit 0"), "Script must exit 0 for ready states");
+    assert!(
+        script.contains("Synced!"),
+        "Script must check for Synced! state"
+    );
+    assert!(
+        script.contains("exit 0"),
+        "Script must exit 0 for ready states"
+    );
 }
 
 #[test]
 fn test_readiness_probe_accepts_tracking_state() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
     
     let probe = super::default_readiness_probe(&NodeType::Validator);
     let exec_action = probe.exec.unwrap();
     let script = &exec_action.command.unwrap()[2];
-    
+
     // Verify the script checks for Tracking! state
-    assert!(script.contains("Tracking!"), "Script must check for Tracking! state");
+    assert!(
+        script.contains("Tracking!"),
+        "Script must check for Tracking! state"
+    );
 }
 
 #[test]
 fn test_readiness_probe_rejects_catching_up_state() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
     
     let probe = super::default_readiness_probe(&NodeType::Validator);
     let exec_action = probe.exec.unwrap();
     let script = &exec_action.command.unwrap()[2];
-    
+
     // The script should use a case statement that only accepts Synced!/Tracking!
     // All other states (including Catching up) will hit the *) exit 1 clause
-    assert!(script.contains("case"), "Script must use case statement for state matching");
-    assert!(script.contains("exit 1"), "Script must exit 1 for non-ready states");
+    assert!(
+        script.contains("case"),
+        "Script must use case statement for state matching"
+    );
+    assert!(
+        script.contains("exit 1"),
+        "Script must exit 1 for non-ready states"
+    );
 }
 
 #[test]
 fn test_readiness_probe_has_correct_timing() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
+
     
     let probe = super::default_readiness_probe(&NodeType::Validator);
     
@@ -2332,13 +2360,22 @@ fn test_readiness_probe_has_correct_timing() {
 #[test]
 fn test_horizon_readiness_probe_uses_http() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::Horizon);
+
     
     let probe = super::default_readiness_probe(&NodeType::Horizon);
     
     // Horizon should use HTTP health check, not exec
-    assert!(probe.http_get.is_some(), "Horizon readiness probe must use HTTP GET");
-    assert!(probe.exec.is_none(), "Horizon readiness probe must not use exec");
-    
+    assert!(
+        probe.http_get.is_some(),
+        "Horizon readiness probe must use HTTP GET"
+    );
+    assert!(
+        probe.exec.is_none(),
+        "Horizon readiness probe must not use exec"
+    );
+
     let http_get = probe.http_get.unwrap();
     assert_eq!(http_get.path, Some("/health".to_string()));
 }
@@ -2346,13 +2383,22 @@ fn test_horizon_readiness_probe_uses_http() {
 #[test]
 fn test_soroban_readiness_probe_uses_http() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::SorobanRpc);
+
     
     let probe = super::default_readiness_probe(&NodeType::SorobanRpc);
     
     // SorobanRpc should use HTTP health check, not exec
-    assert!(probe.http_get.is_some(), "SorobanRpc readiness probe must use HTTP GET");
-    assert!(probe.exec.is_none(), "SorobanRpc readiness probe must not use exec");
-    
+    assert!(
+        probe.http_get.is_some(),
+        "SorobanRpc readiness probe must use HTTP GET"
+    );
+    assert!(
+        probe.exec.is_none(),
+        "SorobanRpc readiness probe must not use exec"
+    );
+
     let http_get = probe.http_get.unwrap();
     assert_eq!(http_get.path, Some("/health".to_string()));
 }
@@ -2360,13 +2406,21 @@ fn test_soroban_readiness_probe_uses_http() {
 #[test]
 fn test_readiness_probe_queries_correct_port() {
     use crate::crd::NodeType;
+
+    let probe = super::super::default_readiness_probe(&NodeType::Validator);
     
     let probe = super::default_readiness_probe(&NodeType::Validator);
     let script = &probe.exec.unwrap().command.unwrap()[2];
-    
+
     // Verify the script queries the correct stellar-core HTTP API port
-    assert!(script.contains("localhost:11626"), "Script must query stellar-core HTTP API on port 11626");
-    assert!(script.contains("/info"), "Script must query the /info endpoint");
+    assert!(
+        script.contains("localhost:11626"),
+        "Script must query stellar-core HTTP API on port 11626"
+    );
+    assert!(
+        script.contains("/info"),
+        "Script must query the /info endpoint"
+    );
 }
 
 // -----------------------------------------------------------------------
@@ -2375,9 +2429,9 @@ fn test_readiness_probe_queries_correct_port() {
 
 #[test]
 fn test_validator_has_explicit_command() {
-    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
     use crate::crd::types::{ResourceRequirements, ResourceSpec};
-    
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+
     let spec = StellarNodeSpec {
         node_type: NodeType::Validator,
         network: StellarNetwork::Testnet,
@@ -2395,9 +2449,11 @@ fn test_validator_has_explicit_command() {
         replicas: 1,
         ..Default::default()
     };
-    
+
     let mut node = crate::crd::StellarNode::new("test-validator", spec);
     node.metadata.namespace = Some("default".to_string());
+
+    let sts = super::super::build_statefulset(&node, false);
     
     let sts = super::build_statefulset(&node, false, None);
     let container = sts
@@ -2410,9 +2466,12 @@ fn test_validator_has_explicit_command() {
         .into_iter()
         .find(|c| c.name == "stellar-node")
         .expect("stellar-node container must exist");
-    
+
     // Verify explicit command is set
-    assert!(container.command.is_some(), "Validator container must have explicit command");
+    assert!(
+        container.command.is_some(),
+        "Validator container must have explicit command"
+    );
     let command = container.command.unwrap();
     assert_eq!(command[0], "/usr/bin/stellar-core");
     assert_eq!(command[1], "run");
@@ -2422,9 +2481,9 @@ fn test_validator_has_explicit_command() {
 
 #[test]
 fn test_horizon_has_explicit_command() {
-    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
     use crate::crd::types::{HorizonConfig, ResourceRequirements, ResourceSpec};
-    
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+
     let spec = StellarNodeSpec {
         node_type: NodeType::Horizon,
         network: StellarNetwork::Testnet,
@@ -2446,9 +2505,11 @@ fn test_horizon_has_explicit_command() {
         }),
         ..Default::default()
     };
-    
+
     let mut node = crate::crd::StellarNode::new("test-horizon", spec);
     node.metadata.namespace = Some("default".to_string());
+
+    let dep = super::super::build_deployment(&node, false);
     
     let dep = super::build_deployment(&node, false);
     let container = dep
@@ -2461,18 +2522,21 @@ fn test_horizon_has_explicit_command() {
         .into_iter()
         .find(|c| c.name == "stellar-node")
         .expect("stellar-node container must exist");
-    
+
     // Verify explicit command is set
-    assert!(container.command.is_some(), "Horizon container must have explicit command");
+    assert!(
+        container.command.is_some(),
+        "Horizon container must have explicit command"
+    );
     let command = container.command.unwrap();
     assert_eq!(command[0], "/stellar-horizon");
 }
 
 #[test]
 fn test_soroban_has_explicit_command() {
-    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
     use crate::crd::types::{ResourceRequirements, ResourceSpec, SorobanConfig};
-    
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+
     let spec = StellarNodeSpec {
         node_type: NodeType::SorobanRpc,
         network: StellarNetwork::Testnet,
@@ -2494,9 +2558,11 @@ fn test_soroban_has_explicit_command() {
         }),
         ..Default::default()
     };
-    
+
     let mut node = crate::crd::StellarNode::new("test-soroban", spec);
     node.metadata.namespace = Some("default".to_string());
+
+    let dep = super::super::build_deployment(&node, false);
     
     let dep = super::build_deployment(&node, false);
     let container = dep
@@ -2509,18 +2575,21 @@ fn test_soroban_has_explicit_command() {
         .into_iter()
         .find(|c| c.name == "stellar-node")
         .expect("stellar-node container must exist");
-    
+
     // Verify explicit command is set
-    assert!(container.command.is_some(), "SorobanRpc container must have explicit command");
+    assert!(
+        container.command.is_some(),
+        "SorobanRpc container must have explicit command"
+    );
     let command = container.command.unwrap();
     assert_eq!(command[0], "/stellar-rpc");
 }
 
 #[test]
 fn test_custom_command_override() {
-    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
     use crate::crd::types::{ResourceRequirements, ResourceSpec};
-    
+    use crate::crd::{NodeType, StellarNetwork, StellarNodeSpec};
+
     let spec = StellarNodeSpec {
         node_type: NodeType::Validator,
         network: StellarNetwork::Testnet,
@@ -2544,9 +2613,11 @@ fn test_custom_command_override() {
         args: Some(vec!["--verbose".to_string()]),
         ..Default::default()
     };
-    
+
     let mut node = crate::crd::StellarNode::new("test-custom", spec);
     node.metadata.namespace = Some("default".to_string());
+
+    let sts = super::super::build_statefulset(&node, false);
     
     let sts = super::build_statefulset(&node, false, None);
     let container = sts
@@ -2559,14 +2630,14 @@ fn test_custom_command_override() {
         .into_iter()
         .find(|c| c.name == "stellar-node")
         .expect("stellar-node container must exist");
-    
+
     // Verify custom command is used
     assert!(container.command.is_some(), "Container must have command");
     let command = container.command.unwrap();
     assert_eq!(command[0], "/custom/stellar-core");
     assert_eq!(command[1], "--config");
     assert_eq!(command[2], "/custom/config.cfg");
-    
+
     // Verify custom args are used
     assert!(container.args.is_some(), "Container must have args");
     let args = container.args.unwrap();

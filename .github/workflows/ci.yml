@@ -25,7 +25,8 @@ env:
 #                                          ├── security-audit ────────────────┐ │
 #                                          ├── helm-lint (helm changes only)   │ │
 #                                          ├── examples-smoke-test (examples) │ │
-#                                          └── api-docs (api_docs changes)     │ │
+#                                          ├── api-docs (api_docs changes)     │ │
+#                                          └── issue-template-lint (.github/ISSUE_TEMPLATE) │
 #                                                                             ▼ ▼
 # changes ──┬── lint ──────────────────────────────────────────────────────────┐
 #           ├── security-audit ──────────────────────────────────────────────┐ │
@@ -59,6 +60,7 @@ jobs:
       examples: ${{ steps.detect.outputs.examples }}
       yaml_schema: ${{ steps.detect.outputs.yaml_schema }}
       db_migrations: ${{ steps.detect.outputs.db_migrations }}
+      issue_templates: ${{ steps.detect.outputs.issue_templates }}
     steps:
       - uses: actions/checkout@v7
 
@@ -80,7 +82,7 @@ jobs:
 
           # First push on a new branch has no before SHA — treat as full change
           if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
-            for key in docker helm api_docs rust_core deps examples yaml_schema db_migrations; do
+            for key in docker helm api_docs rust_core deps examples yaml_schema db_migrations issue_templates; do
               echo "${key}=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -113,6 +115,12 @@ jobs:
             >> "$GITHUB_OUTPUT"
           echo "db_migrations=$(_match \
             '^(db/|src/db_migrations\.rs|tests/db_migration_harness\.rs|scripts/ci/test-db-migrations\.sh)')" \
+            >> "$GITHUB_OUTPUT"
+          # Issue templates also contain YAML, but the repository-wide validator
+          # only checks Kubernetes/config manifests, so the GitHub Issue Form
+          # schema needs its own gate (see the `issue-template-lint` job).
+          echo "issue_templates=$(_match \
+            '^(\.github/ISSUE_TEMPLATE/)')" \
             >> "$GITHUB_OUTPUT"
 
   # ── 1.5 Repository preflight gate ───────────────────────────────────────────
@@ -234,6 +242,33 @@ jobs:
 
       - name: Check Stale TODOs
         run: bash scripts/ci/check-stale-todos.sh
+
+  # ── 2.6. Issue Template Lint (#1623) ───────────────────────────────────────────
+  # GitHub Issue Forms in .github/ISSUE_TEMPLATE/ are YAML but are neither
+  # Kubernetes manifests nor covered by scripts/validate-yaml-manifests.py, so
+  # nothing in CI verified their schema. A malformed form (missing `body`, an
+  # unsupported `type`, a bad `config.yml` shape) silently replaced the GitHub
+  # issue form UI. This job runs the existing linter and is skipped entirely
+  # for PRs that do not touch .github/ISSUE_TEMPLATE/.
+  issue-template-lint:
+    name: Issue Template Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    if: needs.changes.outputs.issue_templates == 'true'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      - name: Lint issue templates
+        run: python3 scripts/issue_template_lint.py
 
   # ── 3. Lint & Format ─────────────────────────────────────────────────────────
   lint:

@@ -28,11 +28,11 @@ use kube::{
     api::{Api, ListParams, Patch, PatchParams},
     Client, ResourceExt,
 };
-use rcgen::{
-    CertificateParams, DistinguishedName, ExtendedKeyUsagePurpose, IsCa, KeyPair,
-    KeyUsagePurpose, SanType,
-};
 use rcgen::string::Ia5String;
+use rcgen::{
+    CertificateParams, DistinguishedName, ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose,
+    SanType,
+};
 use std::collections::BTreeMap;
 use tracing::{debug, info, warn};
 use x509_parser::certificate::X509Certificate;

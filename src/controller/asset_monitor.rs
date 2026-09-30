@@ -4,11 +4,11 @@ use std::sync::Mutex;
 use once_cell::sync::Lazy;
 use tracing::warn;
 
-use crate::crd::StellarAssetMonitor;
 use crate::controller::metrics::{
     AssetLabels, ASSET_CLAWBACK_EVENTS_TOTAL, ASSET_HOLDERS, ASSET_LARGE_SUPPLY_CHANGES_TOTAL,
     ASSET_LIQUIDITY_STROOPS, ASSET_SUPPLY_CHANGE_PERCENT, ASSET_SUPPLY_STROOPS,
 };
+use crate::crd::StellarAssetMonitor;
 use kube::ResourceExt;
 
 static PREVIOUS_SUPPLY: Lazy<Mutex<HashMap<AssetLabels, i64>>> =
@@ -92,10 +92,13 @@ pub fn process_ledger_change(monitor: &StellarAssetMonitor, change: &AssetLedger
                 .insert(labels.clone(), change.supply_stroops)
                 .map(|old| {
                     if old == 0 {
-                        if change.supply_stroops == 0 { 0.0 } else { 100.0 }
+                        if change.supply_stroops == 0 {
+                            0.0
+                        } else {
+                            100.0
+                        }
                     } else {
-                        change.supply_stroops.saturating_sub(old) as f64
-                            / old.unsigned_abs() as f64
+                        change.supply_stroops.saturating_sub(old) as f64 / old.unsigned_abs() as f64
                             * 100.0
                     }
                 })
@@ -118,9 +121,7 @@ pub fn process_ledger_change(monitor: &StellarAssetMonitor, change: &AssetLedger
     }
 
     if change.clawback {
-        ASSET_CLAWBACK_EVENTS_TOTAL
-            .get_or_create(&labels)
-            .inc();
+        ASSET_CLAWBACK_EVENTS_TOTAL.get_or_create(&labels).inc();
     }
 
     tracing::debug!(

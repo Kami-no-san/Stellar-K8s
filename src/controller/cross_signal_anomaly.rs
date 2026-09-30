@@ -246,8 +246,10 @@ impl CrossSignalDetector {
         drop(traffic);
 
         // Split into pre/post windows
-        let pre_cutoff = deploy_time - chrono::Duration::seconds(self.config.pre_window_seconds as i64);
-        let post_cutoff = deploy_time + chrono::Duration::seconds(self.config.post_window_seconds as i64);
+        let pre_cutoff =
+            deploy_time - chrono::Duration::seconds(self.config.pre_window_seconds as i64);
+        let post_cutoff =
+            deploy_time + chrono::Duration::seconds(self.config.post_window_seconds as i64);
 
         let pre_samples: Vec<_> = service_metrics
             .iter()
@@ -272,19 +274,57 @@ impl CrossSignalDetector {
 
         // Analyze each signal
         let signals = SignalAnalysis {
-            error_rate_change: analyze_signal(baseline.error_rate.mean, baseline.error_rate.std_dev, post.error_rate.mean, post.error_rate.std_dev, pre_samples.len(), post_samples.len()),
-            latency_p50_change: analyze_signal(baseline.latency_p50.mean, baseline.latency_p50.std_dev, post.latency_p50.mean, post.latency_p50.std_dev, pre_samples.len(), post_samples.len()),
-            latency_p95_change: analyze_signal(baseline.latency_p95.mean, baseline.latency_p95.std_dev, post.latency_p95.mean, post.latency_p95.std_dev, pre_samples.len(), post_samples.len()),
-            throughput_change: analyze_signal(baseline.throughput.mean, baseline.throughput.std_dev, post.throughput.mean, post.throughput.std_dev, pre_samples.len(), post_samples.len()),
+            error_rate_change: analyze_signal(
+                baseline.error_rate.mean,
+                baseline.error_rate.std_dev,
+                post.error_rate.mean,
+                post.error_rate.std_dev,
+                pre_samples.len(),
+                post_samples.len(),
+            ),
+            latency_p50_change: analyze_signal(
+                baseline.latency_p50.mean,
+                baseline.latency_p50.std_dev,
+                post.latency_p50.mean,
+                post.latency_p50.std_dev,
+                pre_samples.len(),
+                post_samples.len(),
+            ),
+            latency_p95_change: analyze_signal(
+                baseline.latency_p95.mean,
+                baseline.latency_p95.std_dev,
+                post.latency_p95.mean,
+                post.latency_p95.std_dev,
+                pre_samples.len(),
+                post_samples.len(),
+            ),
+            throughput_change: analyze_signal(
+                baseline.throughput.mean,
+                baseline.throughput.std_dev,
+                post.throughput.mean,
+                post.throughput.std_dev,
+                pre_samples.len(),
+                post_samples.len(),
+            ),
         };
 
         // Aggregate confidence score
-        let significant_count = [signals.error_rate_change.significant, signals.latency_p50_change.significant, signals.latency_p95_change.significant, signals.throughput_change.significant]
-            .iter().filter(|&&s| s).count();
+        let significant_count = [
+            signals.error_rate_change.significant,
+            signals.latency_p50_change.significant,
+            signals.latency_p95_change.significant,
+            signals.throughput_change.significant,
+        ]
+        .iter()
+        .filter(|&&s| s)
+        .count();
         let confidence_score = (significant_count as f64 / 4.0).min(1.0);
 
         // Any signal significant = anomaly detected
-        let anomaly_detected = signals.error_rate_change.significant || signals.latency_p50_change.significant || signals.latency_p95_change.significant || signals.throughput_change.significant;
+        let anomaly_detected = signals.error_rate_change.significant
+            || signals.latency_p50_change.significant
+            || signals.latency_p95_change.significant
+            || signals.throughput_change.significant;
 
         let analysis = CrossSignalAnalysis {
             deployment_id: deployment_id.to_string(),
@@ -297,7 +337,10 @@ impl CrossSignalDetector {
             post_deploy: post.into(),
         };
 
-        self.analyses.write().await.insert(deployment_id.to_string(), analysis.clone());
+        self.analyses
+            .write()
+            .await
+            .insert(deployment_id.to_string(), analysis.clone());
         Some(analysis)
     }
 
@@ -305,7 +348,11 @@ impl CrossSignalDetector {
     pub async fn get_analyses(&self, service: Option<&str>) -> Vec<CrossSignalAnalysis> {
         let analyses = self.analyses.read().await;
         if let Some(svc) = service {
-            analyses.values().filter(|a| a.service == svc).cloned().collect()
+            analyses
+                .values()
+                .filter(|a| a.service == svc)
+                .cloned()
+                .collect()
         } else {
             analyses.values().cloned().collect()
         }
@@ -317,7 +364,12 @@ fn compute_stats(samples: &[TrafficMetrics]) -> BaselineStats {
     let error_rate = stat(&samples.iter().map(|s| s.error_rate).collect::<Vec<_>>());
     let latency_p50 = stat(&samples.iter().map(|s| s.p50_latency_ms).collect::<Vec<_>>());
     let latency_p95 = stat(&samples.iter().map(|s| s.p95_latency_ms).collect::<Vec<_>>());
-    let throughput = stat(&samples.iter().map(|s| s.requests_per_second).collect::<Vec<_>>());
+    let throughput = stat(
+        &samples
+            .iter()
+            .map(|s| s.requests_per_second)
+            .collect::<Vec<_>>(),
+    );
 
     BaselineStats {
         sample_count: samples.len(),
@@ -341,7 +393,14 @@ fn stat(values: &[f64]) -> MetricStats {
     }
 }
 
-fn analyze_signal(baseline_mean: f64, baseline_std: f64, post_mean: f64, post_std: f64, n1: usize, n2: usize) -> SignalChange {
+fn analyze_signal(
+    baseline_mean: f64,
+    baseline_std: f64,
+    post_mean: f64,
+    post_std: f64,
+    n1: usize,
+    n2: usize,
+) -> SignalChange {
     let relative_change_pct = if baseline_mean.abs() > f64::EPSILON {
         ((post_mean - baseline_mean) / baseline_mean.abs()) * 100.0
     } else {
@@ -350,7 +409,11 @@ fn analyze_signal(baseline_mean: f64, baseline_std: f64, post_mean: f64, post_st
 
     // Welch's t-test for unequal variances
     let se = (baseline_std.powi(2) / n1 as f64 + post_std.powi(2) / n2 as f64).sqrt();
-    let t_stat = if se > 0.0 { (post_mean - baseline_mean) / se } else { 0.0 };
+    let t_stat = if se > 0.0 {
+        (post_mean - baseline_mean) / se
+    } else {
+        0.0
+    };
     let df = if se > 0.0 {
         let v1 = baseline_std.powi(2) / n1 as f64;
         let v2 = post_std.powi(2) / n2 as f64;
@@ -406,16 +469,25 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
 
-    fn sample_metrics(service: &str, base_time: DateTime<Utc>, count: usize, error_rate: f64, latency: f64, rps: f64) -> Vec<TrafficMetrics> {
-        (0..count).map(|i| TrafficMetrics {
-            service: service.into(),
-            timestamp: base_time + chrono::Duration::seconds(i as i64 * 10),
-            requests_per_second: rps,
-            error_rate,
-            p50_latency_ms: latency,
-            p95_latency_ms: latency * 1.5,
-            p99_latency_ms: latency * 2.0,
-        }).collect()
+    fn sample_metrics(
+        service: &str,
+        base_time: DateTime<Utc>,
+        count: usize,
+        error_rate: f64,
+        latency: f64,
+        rps: f64,
+    ) -> Vec<TrafficMetrics> {
+        (0..count)
+            .map(|i| TrafficMetrics {
+                service: service.into(),
+                timestamp: base_time + chrono::Duration::seconds(i as i64 * 10),
+                requests_per_second: rps,
+                error_rate,
+                p50_latency_ms: latency,
+                p95_latency_ms: latency * 1.5,
+                p99_latency_ms: latency * 2.0,
+            })
+            .collect()
     }
 
     #[test]
@@ -424,7 +496,14 @@ mod tests {
         let detector = CrossSignalDetector::new(config);
 
         let base_time = Utc::now();
-        let pre = sample_metrics("svc-a", base_time - chrono::Duration::seconds(300), 30, 0.01, 50.0, 100.0);
+        let pre = sample_metrics(
+            "svc-a",
+            base_time - chrono::Duration::seconds(300),
+            30,
+            0.01,
+            50.0,
+            100.0,
+        );
         let post = sample_metrics("svc-a", base_time, 60, 0.15, 52.0, 95.0); // Error rate spike 1.5%
 
         // Manually test signal analysis
@@ -438,7 +517,10 @@ mod tests {
         let change = analyze_signal(0.01, 0.005, 0.012, 0.006, 30, 60);
         // Small change within normal variance should not be significant
         // Depending on variance, might or might not be significant
-        println!("p-value: {}, significant: {}", change.p_value, change.significant);
+        println!(
+            "p-value: {}, significant: {}",
+            change.p_value, change.significant
+        );
     }
 
     #[test]

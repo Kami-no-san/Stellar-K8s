@@ -483,6 +483,7 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
             error!("MaintenancePlan controller stopped with error: {}", e);
         }
     });
+
     // Preemptive migration for scheduled-node-group / spot interruption signals (#1484).
     let preemptive = Arc::new(
         super::preemptive_spot_migration::PreemptiveSpotMigrator::new(

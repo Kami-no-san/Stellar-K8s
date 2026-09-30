@@ -94,7 +94,11 @@ async fn test_metrics_by_type_breakdown() {
         "horizonMetrics",
     ];
 
-    assert_eq!(expected_metrics.len(), 8, "All metric types should be tracked");
+    assert_eq!(
+        expected_metrics.len(),
+        8,
+        "All metric types should be tracked"
+    );
 }
 
 #[tokio::test]
@@ -184,11 +188,7 @@ async fn test_config_impact_response() {
     let expected_fields = vec!["impact", "validationErrors"];
 
     for field in expected_fields {
-        assert!(
-            !field.is_empty(),
-            "Config impact should include {}",
-            field
-        );
+        assert!(!field.is_empty(), "Config impact should include {}", field);
     }
 }
 
@@ -364,4 +364,3 @@ fn test_condition_display_severity_mapping() {
         assert!(!expected_severity.is_empty());
     }
 }
-

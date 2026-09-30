@@ -1547,7 +1547,8 @@ async fn show_leaderboard(
     top_n: usize,
     output_format: &str,
 ) -> Result<()> {
-    let board_api: Api<stellar_k8s::crd::ValidatorLeaderboard> = Api::namespaced(client.clone(), namespace);
+    let board_api: Api<stellar_k8s::crd::ValidatorLeaderboard> =
+        Api::namespaced(client.clone(), namespace);
     let mut entries = Vec::new();
     if let Ok(boards) = board_api.list(&ListParams::default()).await {
         if let Some(board) = boards.items.into_iter().next() {
@@ -1583,12 +1584,18 @@ async fn show_leaderboard(
     entries.truncate(top_n);
 
     if output_format == "json" {
-        println!("{}", serde_json::to_string_pretty(&entries).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&entries).unwrap_or_default()
+        );
         return Ok(());
     }
 
     if entries.is_empty() {
-        println!("No active validators detected for leaderboard in namespace '{}'.", namespace);
+        println!(
+            "No active validators detected for leaderboard in namespace '{}'.",
+            namespace
+        );
         return Ok(());
     }
 
@@ -1612,7 +1619,10 @@ async fn show_leaderboard(
             e.archive_completeness_pct
         );
     }
-    println!("\nTop {} validator(s) ranked by uptime (>99%=A), SCP consensus, and archive completeness.", entries.len());
+    println!(
+        "\nTop {} validator(s) ranked by uptime (>99%=A), SCP consensus, and archive completeness.",
+        entries.len()
+    );
     Ok(())
 }
 

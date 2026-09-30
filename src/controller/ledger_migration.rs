@@ -45,9 +45,15 @@ pub fn build_export_job(
 ) -> Job {
     let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
     let node_name = node.name_any();
-    let job_name = format!("ledger-export-{}-{ledger_sequence}", &node_name[..node_name.len().min(24)]);
+    let job_name = format!(
+        "ledger-export-{}-{ledger_sequence}",
+        &node_name[..node_name.len().min(24)]
+    );
     let mut labels = standard_labels(node);
-    labels.insert("stellar.org/job-type".to_string(), "ledger-export".to_string());
+    labels.insert(
+        "stellar.org/job-type".to_string(),
+        "ledger-export".to_string(),
+    );
 
     let script = r#"set -euo pipefail
 mkdir -p /scratch/manifest
@@ -87,7 +93,10 @@ echo "Exported ledger $LEDGER_SEQUENCE to $DESTINATION; SHA256: $(cut -d ' ' -f 
             EnvVar {
                 name: "AWS_ACCESS_KEY_ID".to_string(),
                 value: None,
-                value_from: Some(secret_key(&config.credentials_secret_ref, "AWS_ACCESS_KEY_ID")),
+                value_from: Some(secret_key(
+                    &config.credentials_secret_ref,
+                    "AWS_ACCESS_KEY_ID",
+                )),
             },
             EnvVar {
                 name: "AWS_SECRET_ACCESS_KEY".to_string(),
@@ -123,7 +132,10 @@ echo "Exported ledger $LEDGER_SEQUENCE to $DESTINATION; SHA256: $(cut -d ' ' -f 
     };
 
     let mut pod_labels = standard_labels(node);
-    pod_labels.insert("stellar.org/job-type".to_string(), "ledger-export".to_string());
+    pod_labels.insert(
+        "stellar.org/job-type".to_string(),
+        "ledger-export".to_string(),
+    );
 
     Job {
         metadata: ObjectMeta {
@@ -218,14 +230,7 @@ pub async fn ensure_export_job(
     if !ensure_export_volume_snapshot(client, node, &namespace, &snapshot_name).await? {
         return Ok(None);
     }
-    ensure_export_pvc(
-        client,
-        node,
-        &namespace,
-        &snapshot_name,
-        &export_pvc_name,
-    )
-    .await?;
+    ensure_export_pvc(client, node, &namespace, &snapshot_name, &export_pvc_name).await?;
 
     let api: Api<Job> = Api::namespaced(client.clone(), &namespace);
     let job = build_export_job(node, config, ledger_sequence, &export_pvc_name);
@@ -297,7 +302,10 @@ async fn ensure_export_pvc(
         Ok(_) => Ok(()),
         Err(kube::Error::Api(error)) if error.code == 404 => {
             let mut requests = std::collections::BTreeMap::new();
-            requests.insert("storage".to_string(), Quantity(node.spec.storage.size.clone()));
+            requests.insert(
+                "storage".to_string(),
+                Quantity(node.spec.storage.size.clone()),
+            );
             let pvc = PersistentVolumeClaim {
                 metadata: ObjectMeta {
                     name: Some(pvc_name.to_string()),

@@ -26,14 +26,13 @@ pub mod opa;
 pub mod policy_engine;
 pub mod policy_test;
 pub mod policy_version;
-pub mod report;
 pub mod regulatory_report;
+pub mod report;
 pub mod soc2_iso;
 
 pub use evidence::{EvidenceCollector, EvidenceItem};
 pub use export::{export_csv, export_json, export_pdf, ComplianceExportFormat};
 pub use frameworks::{ComplianceFramework, ComplianceRule, RuleResult, ValidationPipeline};
 pub use monitor::{ComplianceMonitor, ComplianceStatus, DriftFinding};
-pub use report::{ComplianceReport, ReportGenerator};
 pub use regulatory_report::{RegulatoryReportData, RegulatoryReportGenerator};
-
+pub use report::{ComplianceReport, ReportGenerator};

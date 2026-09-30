@@ -223,10 +223,7 @@ pub fn load_server_config(
 ///
 /// `x509_parser` returns an owned PEM block, so the DER bytes are copied out to
 /// keep the caller independent of that temporary.
-fn first_certificate_der(
-    pem: &[u8],
-    description: &str,
-) -> Result<Vec<u8>, CertHealthError> {
+fn first_certificate_der(pem: &[u8], description: &str) -> Result<Vec<u8>, CertHealthError> {
     let (_, block) = x509_parser::pem::parse_x509_pem(pem)
         .map_err(|e| CertHealthError::Parse(format!("{description}: {e}")))?;
     Ok(block.contents)

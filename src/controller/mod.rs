@@ -37,6 +37,8 @@ pub mod resource_meta;
 pub mod anomaly_detection;
 pub(crate) mod archive_health;
 pub mod archive_prune;
+#[cfg(feature = "metrics")]
+pub mod asset_monitor;
 pub mod audit;
 pub mod audit_log;
 pub mod audit_recorder;
@@ -73,16 +75,14 @@ pub(crate) mod health;
 mod health_test;
 pub mod ingestion;
 pub mod kms_secret;
+pub mod ledger_migration;
 [cfg(feature = "metrics")]
 pub mod lifecycle_hooks;
 #[cfg(feature = "metrics")]
 pub mod metrics;
-#[cfg(feature = "metrics")]
-pub mod asset_monitor;
 pub mod mtls;
 pub mod mtls_rotation;
 pub mod oci_snapshot;
-pub mod ledger_migration;
 pub mod operator_config;
 pub mod ownership_registry;
 pub mod peer_connectivity;
@@ -97,7 +97,6 @@ pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
-pub mod testnet_compliance;
 pub(crate) mod reconciler;
 [cfg(test)]
 mod reconciler_test;
@@ -120,6 +119,8 @@ pub mod spot_drain;
 pub mod storage_migration;
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
+pub mod tenant_reconciler;
+pub mod testnet_compliance;
 
 pub mod topology;
 pub mod traffic;
@@ -145,18 +146,8 @@ pub use anomaly_detection::{run_anomaly_detection, AnomalyDetector, AnomalyEvent
 pub use archive_health::{
     calculate_backoff, check_archive_integrity, check_archives_version_compatibility,
     check_history_archive_health, check_single_archive_version_compatibility,
-    supported_archive_versions, validate_archive_compatibility,
-    ArchiveHealthResult, ArchiveIntegrityResult, ArchiveVersionCompatibility,
-    StellarHistoryJson, ARCHIVE_LAG_THRESHOLD,
-};
-pub use horizon_failover::{
-    HorizonHealthStatus, HorizonIngestionCoordinator, HorizonIngestionRole,
-    DEFAULT_INGESTION_LEASE_DURATION_SECS,
-};
-pub use soroban_rpc::{
-    EventCursor, EventFilter, GetEventsRequest, GetEventsResponse, GetLedgerEntriesRequest,
-    GetLedgerEntriesResponse, LedgerEntryLruCache, LedgerEntryResult, SorobanEvent,
-    SorobanRpcHandler, DEFAULT_CACHE_SIZE_MB, DEFAULT_MAX_PAGE_SIZE,
+    supported_archive_versions, validate_archive_compatibility, ArchiveHealthResult,
+    ArchiveIntegrityResult, ArchiveVersionCompatibility, StellarHistoryJson, ARCHIVE_LAG_THRESHOLD,
 };
 pub use audit_log::{AdminAction, AuditEntry, AuditLog};
 pub use audit_recorder::AuditRecorder;
@@ -201,6 +192,10 @@ pub use gitops_upgrade::{
     ProtocolUpgradeTimeline,
 };
 pub use health::{check_node_health, HealthCheckResult};
+pub use horizon_failover::{
+    HorizonHealthStatus, HorizonIngestionCoordinator, HorizonIngestionRole,
+    DEFAULT_INGESTION_LEASE_DURATION_SECS,
+};
 pub use job_orphan_reconciler::{
     classify_job, classify_pod, plan_reclaim, reconcile_job_retention, ArtifactId, ArtifactKind,
     Classification, ClusterView, JobObservation, JobPhase, OrphanClass, OwnerRefSnapshot,
@@ -241,6 +236,11 @@ pub use snapshot::{
     verify_file as snapshot_verify_file, ReconcileOutcome, SnapshotReconcilerConfig, SnapshotRef,
 };
 pub use snapshot_worker::run_snapshot_worker;
+pub use soroban_rpc::{
+    EventCursor, EventFilter, GetEventsRequest, GetEventsResponse, GetLedgerEntriesRequest,
+    GetLedgerEntriesResponse, LedgerEntryLruCache, LedgerEntryResult, SorobanEvent,
+    SorobanRpcHandler, DEFAULT_CACHE_SIZE_MB, DEFAULT_MAX_PAGE_SIZE,
+};
 pub use webhook_delivery::{
     DeliveryRecord, WebhookDeliveryService, WebhookEndpoint, WebhookEvent, WebhookEventType,
 };
@@ -262,7 +262,5 @@ pub mod pvc_autoscaler;
 pub mod resource_optimization;
 
 // Issue #1577 — Ledger-Close Webhook Dispatcher exports
-pub use ledger_close_dispatcher::{
-    run_ledger_close_poll_loop, LedgerCloseDispatcher,
-};
+pub use ledger_close_dispatcher::{run_ledger_close_poll_loop, LedgerCloseDispatcher};
 pub use orphan_audit::{OrphanAuditReport, OrphanAuditor, OrphanedResource};

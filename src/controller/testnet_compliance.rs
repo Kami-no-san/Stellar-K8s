@@ -31,7 +31,7 @@
 //! `ValidatorConfig`, the reconciler calls this validator and emits a
 //! `ComplianceWarning` condition listing any non-compliant fields.
 
-use crate::crd::{StellarNode, StellarNetwork, ValidatorConfig};
+use crate::crd::{StellarNetwork, StellarNode, ValidatorConfig};
 
 /// The SDF testnet history archive URL.
 pub const SDF_TESTNET_HISTORY_ARCHIVE: &str =
@@ -119,7 +119,8 @@ fn check_history_archives(config: &ValidatorConfig, findings: &mut Vec<Complianc
     if config.history_archive_urls.is_empty() {
         findings.push(ComplianceFinding {
             field: "historyArchiveUrls".to_string(),
-            message: "No history archive URLs configured; SDF testnet requires a history archive".to_string(),
+            message: "No history archive URLs configured; SDF testnet requires a history archive"
+                .to_string(),
             expected: expected_archive.to_string(),
             actual: "(none)".to_string(),
         });
@@ -153,7 +154,8 @@ fn check_known_peers(config: &ValidatorConfig, findings: &mut Vec<ComplianceFind
         None => {
             findings.push(ComplianceFinding {
                 field: "knownPeers".to_string(),
-                message: "knownPeers is not set; SDF testnet requires known peers for connectivity".to_string(),
+                message: "knownPeers is not set; SDF testnet requires known peers for connectivity"
+                    .to_string(),
                 expected: SDF_TESTNET_PEERS.join(", "),
                 actual: "(not set)".to_string(),
             });
@@ -213,7 +215,7 @@ fn check_quorum_set(config: &ValidatorConfig, findings: &mut Vec<ComplianceFindi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crd::{StellarNode, StellarNodeSpec, StellarNetwork, ValidatorConfig};
+    use crate::crd::{StellarNetwork, StellarNode, StellarNodeSpec, ValidatorConfig};
 
     fn make_testnet_node(validator_config: Option<ValidatorConfig>) -> StellarNode {
         StellarNode {
@@ -278,7 +280,10 @@ mod tests {
     fn node_without_validator_config_passes_silently() {
         let node = make_testnet_node(None);
         let report = validate_testnet_compliance(&node);
-        assert!(report.compliant, "Node without validator_config should pass silently");
+        assert!(
+            report.compliant,
+            "Node without validator_config should pass silently"
+        );
         assert!(report.findings.is_empty());
     }
 
@@ -292,8 +297,14 @@ mod tests {
         };
         let node = make_testnet_node(Some(config));
         let report = validate_testnet_compliance(&node);
-        let history_finding = report.findings.iter().find(|f| f.field == "historyArchiveUrls");
-        assert!(history_finding.is_some(), "Missing history archive should be detected");
+        let history_finding = report
+            .findings
+            .iter()
+            .find(|f| f.field == "historyArchiveUrls");
+        assert!(
+            history_finding.is_some(),
+            "Missing history archive should be detected"
+        );
     }
 
     #[test]
@@ -307,7 +318,10 @@ mod tests {
         let node = make_testnet_node(Some(config));
         let report = validate_testnet_compliance(&node);
         let peers_finding = report.findings.iter().find(|f| f.field == "knownPeers");
-        assert!(peers_finding.is_some(), "Missing known peers should be detected");
+        assert!(
+            peers_finding.is_some(),
+            "Missing known peers should be detected"
+        );
     }
 
     #[test]
@@ -321,7 +335,10 @@ mod tests {
         let node = make_testnet_node(Some(config));
         let report = validate_testnet_compliance(&node);
         let quorum_finding = report.findings.iter().find(|f| f.field == "quorumSet");
-        assert!(quorum_finding.is_some(), "Missing quorum set should be detected");
+        assert!(
+            quorum_finding.is_some(),
+            "Missing quorum set should be detected"
+        );
     }
 
     #[test]
@@ -337,8 +354,16 @@ mod tests {
         assert!(!report.compliant);
         // Each finding should list both expected and actual values
         for finding in &report.findings {
-            assert!(!finding.expected.is_empty(), "Finding should list expected value for {}", finding.field);
-            assert!(!finding.actual.is_empty(), "Finding should list actual value for {}", finding.field);
+            assert!(
+                !finding.expected.is_empty(),
+                "Finding should list expected value for {}",
+                finding.field
+            );
+            assert!(
+                !finding.actual.is_empty(),
+                "Finding should list actual value for {}",
+                finding.field
+            );
         }
     }
 }

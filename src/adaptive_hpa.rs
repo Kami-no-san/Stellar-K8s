@@ -26,22 +26,40 @@
 //! 5. **FeeStatCongestionRatio**: Network fee market surge indicator (target < 0.85).
 //! 6. **TransactionThroughputTps**: Workload TPS per replica (target 100 TPS/replica).
 
-use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
 /// Types of Stellar business SLIs driving autoscaling.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", content = "data", rename_all = "camelCase")]
 pub enum BusinessSliMetric {
-    LedgerCloseLatencyMillis { p95_latency_ms: f64, target_max_ms: f64 },
-    LedgerSyncLag { lag_ledgers: u64, target_max_ledgers: u64 },
-    HorizonTxQueueDepth { queued_transactions: u64, target_max_queue: u64 },
-    SorobanInvocationLatency { p95_latency_ms: f64, target_max_ms: f64 },
-    FeeStatCongestionRatio { congestion_ratio: f64, target_max_ratio: f64 },
-    TransactionThroughputTps { current_tps: f64, target_tps_per_replica: f64 },
+    LedgerCloseLatencyMillis {
+        p95_latency_ms: f64,
+        target_max_ms: f64,
+    },
+    LedgerSyncLag {
+        lag_ledgers: u64,
+        target_max_ledgers: u64,
+    },
+    HorizonTxQueueDepth {
+        queued_transactions: u64,
+        target_max_queue: u64,
+    },
+    SorobanInvocationLatency {
+        p95_latency_ms: f64,
+        target_max_ms: f64,
+    },
+    FeeStatCongestionRatio {
+        congestion_ratio: f64,
+        target_max_ratio: f64,
+    },
+    TransactionThroughputTps {
+        current_tps: f64,
+        target_tps_per_replica: f64,
+    },
 }
 
 impl BusinessSliMetric {
@@ -61,32 +79,74 @@ impl BusinessSliMetric {
     pub fn scaling_ratio(&self, current_replicas: i32) -> f64 {
         let replicas = (current_replicas.max(1)) as f64;
         match self {
-            Self::LedgerCloseLatencyMillis { p95_latency_ms, target_max_ms } => {
-                if *target_max_ms <= 0.0 { 1.0 } else { p95_latency_ms / target_max_ms }
+            Self::LedgerCloseLatencyMillis {
+                p95_latency_ms,
+                target_max_ms,
+            } => {
+                if *target_max_ms <= 0.0 {
+                    1.0
+                } else {
+                    p95_latency_ms / target_max_ms
+                }
             }
-            Self::LedgerSyncLag { lag_ledgers, target_max_ledgers } => {
+            Self::LedgerSyncLag {
+                lag_ledgers,
+                target_max_ledgers,
+            } => {
                 if *target_max_ledgers == 0 {
-                    if *lag_ledgers > 0 { 2.0 } else { 1.0 }
+                    if *lag_ledgers > 0 {
+                        2.0
+                    } else {
+                        1.0
+                    }
                 } else {
                     *lag_ledgers as f64 / *target_max_ledgers as f64
                 }
             }
-            Self::HorizonTxQueueDepth { queued_transactions, target_max_queue } => {
+            Self::HorizonTxQueueDepth {
+                queued_transactions,
+                target_max_queue,
+            } => {
                 if *target_max_queue == 0 {
-                    if *queued_transactions > 0 { 2.0 } else { 1.0 }
+                    if *queued_transactions > 0 {
+                        2.0
+                    } else {
+                        1.0
+                    }
                 } else {
                     *queued_transactions as f64 / *target_max_queue as f64
                 }
             }
-            Self::SorobanInvocationLatency { p95_latency_ms, target_max_ms } => {
-                if *target_max_ms <= 0.0 { 1.0 } else { p95_latency_ms / target_max_ms }
+            Self::SorobanInvocationLatency {
+                p95_latency_ms,
+                target_max_ms,
+            } => {
+                if *target_max_ms <= 0.0 {
+                    1.0
+                } else {
+                    p95_latency_ms / target_max_ms
+                }
             }
-            Self::FeeStatCongestionRatio { congestion_ratio, target_max_ratio } => {
-                if *target_max_ratio <= 0.0 { 1.0 } else { congestion_ratio / target_max_ratio }
+            Self::FeeStatCongestionRatio {
+                congestion_ratio,
+                target_max_ratio,
+            } => {
+                if *target_max_ratio <= 0.0 {
+                    1.0
+                } else {
+                    congestion_ratio / target_max_ratio
+                }
             }
-            Self::TransactionThroughputTps { current_tps, target_tps_per_replica } => {
+            Self::TransactionThroughputTps {
+                current_tps,
+                target_tps_per_replica,
+            } => {
                 let capacity = replicas * target_tps_per_replica;
-                if capacity <= 0.0 { 1.0 } else { current_tps / capacity }
+                if capacity <= 0.0 {
+                    1.0
+                } else {
+                    current_tps / capacity
+                }
             }
         }
     }
@@ -259,7 +319,8 @@ impl AdaptiveHpaEngine {
         // 2. Compute raw desired replicas from dominant ratio
         let raw_desired = if max_smoothed_ratio > 1.0 {
             // Scale-up: apply proactive headroom
-            ((current as f64) * max_smoothed_ratio * self.config.scale_up_headroom_factor).ceil() as i32
+            ((current as f64) * max_smoothed_ratio * self.config.scale_up_headroom_factor).ceil()
+                as i32
         } else if max_smoothed_ratio < 0.85 {
             // Scale-down: conservative target
             ((current as f64) * max_smoothed_ratio).floor() as i32
@@ -286,7 +347,9 @@ impl AdaptiveHpaEngine {
                 (
                     target,
                     ScalingDirection::ScaleUp,
-                    format!("Scale-up driven by {driving_sli} (smoothed ratio={max_smoothed_ratio:.2})"),
+                    format!(
+                        "Scale-up driven by {driving_sli} (smoothed ratio={max_smoothed_ratio:.2})"
+                    ),
                 )
             }
         } else if raw_desired < current {

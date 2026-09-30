@@ -24,11 +24,11 @@
 //! - Human override via annotations
 //! - Support for ServiceMesh and Service traffic splits
 
-use crate::error::{Error, Result};
 use crate::crd::{
     GateResult, ProgressiveDelivery, ProgressiveDeliveryStatus, PromotionPhase, SloGate,
     WeightProgression,
 };
+use crate::error::{Error, Result};
 use chrono::Utc;
 use serde_json::json;
 use std::collections::HashMap;
@@ -174,9 +174,7 @@ impl CanaryPromotionController {
             status.message = Some("All gates passed, ready to promote".to_string());
         } else {
             // Check if any gate exceeded violation threshold
-            let has_violations = gate_results
-                .iter()
-                .any(|g| g.violation_count > 0);
+            let has_violations = gate_results.iter().any(|g| g.violation_count > 0);
             if has_violations {
                 status.phase = PromotionPhase::RollingBack;
                 status.rollback_in_progress = true;
@@ -329,9 +327,7 @@ impl CanaryPromotionController {
         let step = pd.status.as_ref().map(|s| s.current_step).unwrap_or(0);
 
         match &pd.spec.weight_progression {
-            WeightProgression::Linear { step_size, .. } => {
-                std::cmp::min(current + step_size, 100)
-            }
+            WeightProgression::Linear { step_size, .. } => std::cmp::min(current + step_size, 100),
             WeightProgression::Exponential { multiplier, .. } => {
                 let next = (current as f64 * multiplier) as u32;
                 std::cmp::min(next, 100)

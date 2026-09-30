@@ -180,7 +180,7 @@ spec:
   version: "v21.0.0"
   
   storage:
-    storageClassName: aws-validator-high-perf  # References StellarStorageClass
+    storageClass: aws-validator-high-perf  # References StellarStorageClass
     size: "200Gi"
   
   validatorConfig:
@@ -208,10 +208,12 @@ spec:
   version: "v21.0.0"
   
   storage:
-    storageClassName: gcp-horizon-balanced
+    storageClass: gcp-horizon-balanced
     size: "500Gi"
   
   horizonConfig:
+    databaseSecretRef: horizon-database-secret
+    stellarCoreUrl: "https://soroban-rpc-mainnet.example.org"
     ingestEnabled: true
     historyArchiveUrls:
       - "https://history.stellar.org/prd/core-live/core_live_001"
@@ -226,23 +228,22 @@ spec:
 
 ---
 # Example 8: Archive Node with Cost Optimization
+# An archive node is a validator that retains full history, so the CRD models it
+# as `nodeType: Validator` with `historyMode: Full` rather than a separate node type.
 apiVersion: stellar.org/v1alpha1
 kind: StellarNode
 metadata:
   name: mainnet-archive-01
   namespace: stellar
 spec:
-  nodeType: Archive
+  nodeType: Validator
   network: mainnet
   version: "v21.0.0"
+  historyMode: Full
   
   storage:
-    storageClassName: azure-archive-optimized
+    storageClass: azure-archive-optimized
     size: "1Ti"
-  
-  archiveConfig:
-    retentionDays: 365
-    compressionEnabled: true
   
   resources:
     requests:

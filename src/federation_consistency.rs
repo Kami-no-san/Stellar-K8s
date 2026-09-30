@@ -24,11 +24,11 @@
 //! - Bounded convergence time (<30s p99)
 
 use crate::error::{Error, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use chrono::{DateTime, Utc};
 use tracing::{debug, info, warn};
 
 /// Generation vector tracking for distributed consistency
@@ -114,11 +114,7 @@ pub struct FederatedResourceState {
 
 impl FederatedResourceState {
     /// Create new federated resource state
-    pub fn new(
-        resource_id: String,
-        cluster_id: String,
-        spec_hash: String,
-    ) -> Self {
+    pub fn new(resource_id: String, cluster_id: String, spec_hash: String) -> Self {
         let mut state = Self {
             resource_id,
             generation_vector: GenerationVector::new(),
@@ -141,10 +137,8 @@ impl FederatedResourceState {
             .map(|(k, v)| format!("{}={}", k, v))
             .collect::<Vec<_>>()
             .join(",");
-        self.annotations.insert(
-            "stellar.io/generation-vector".to_string(),
-            gen_str,
-        );
+        self.annotations
+            .insert("stellar.io/generation-vector".to_string(), gen_str);
         self.annotations.insert(
             "stellar.io/last-modifier".to_string(),
             self.last_modifier.clone(),
@@ -219,10 +213,14 @@ impl FederationConsistencyReconciler {
         }
 
         // Check for conflicts (concurrent writes)
-        let has_conflict = remote_states
-            .iter()
-            .any(|r| !local_state.generation_vector.dominates(&r.generation_vector)
-                && !r.generation_vector.dominates(&local_state.generation_vector));
+        let has_conflict = remote_states.iter().any(|r| {
+            !local_state
+                .generation_vector
+                .dominates(&r.generation_vector)
+                && !r
+                    .generation_vector
+                    .dominates(&local_state.generation_vector)
+        });
 
         if has_conflict {
             debug!(
@@ -241,7 +239,10 @@ impl FederationConsistencyReconciler {
             // No conflict, use state with highest generation vector
             let mut result = local_state.clone();
             for remote_state in &remote_states {
-                if remote_state.generation_vector.dominates(&result.generation_vector) {
+                if remote_state
+                    .generation_vector
+                    .dominates(&result.generation_vector)
+                {
                     result = (*remote_state).clone();
                 }
             }
@@ -258,9 +259,9 @@ impl FederationConsistencyReconciler {
         let now = Utc::now();
         let partition_threshold = chrono::Duration::seconds(30); // 30 second timeout
 
-        peer_states.iter().all(|state| {
-            (now - state.last_modified_at) > partition_threshold
-        })
+        peer_states
+            .iter()
+            .all(|state| (now - state.last_modified_at) > partition_threshold)
     }
 
     /// Resolve conflicts using deterministic tiebreaker
@@ -287,16 +288,9 @@ impl FederationConsistencyReconciler {
     }
 
     /// Update resource state locally
-    pub fn update_state(
-        &mut self,
-        resource_id: String,
-        spec_hash: String,
-    ) -> Result<()> {
-        let mut state = FederatedResourceState::new(
-            resource_id.clone(),
-            self.cluster_id.clone(),
-            spec_hash,
-        );
+    pub fn update_state(&mut self, resource_id: String, spec_hash: String) -> Result<()> {
+        let mut state =
+            FederatedResourceState::new(resource_id.clone(), self.cluster_id.clone(), spec_hash);
         state.update_generation_annotation();
         self.resource_states.insert(resource_id, state);
         Ok(())
@@ -350,8 +344,7 @@ mod tests {
         );
         remote.generation_vector.increment("cluster-b");
 
-        let winner =
-            FederatedResourceState::resolve_conflict(&local, &remote, "cluster-a");
+        let winner = FederatedResourceState::resolve_conflict(&local, &remote, "cluster-a");
         assert_eq!(winner, "remote"); // remote has higher generation
     }
 
