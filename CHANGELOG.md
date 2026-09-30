@@ -3,6 +3,121 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v3.4.0 (2026-09-30) [minor]
+
+• Merge pull request #1647 from AnibeAchema/feat/1500-tenant-isolation-crd
+✨ feat(crd): express node and audit isolation boundaries on Tenant (#1500)
+• Merge pull request #1646 from Debbys-design/drips/1626-1627-1628-1629
+• Wire federation secrets sync + CI helper targets and add repo-health/dep-gate bats tests
+• Merge pull request #1644 from confima-source/feat/welcome-first-contribution-workflow
+✨ feat: wire WELCOME_TEMPLATE.md into first-contribution workflow
+• Merge pull request #1654 from Shindailulu/fix/crd-seed-rotation-status-and-seed-env-dedupe
+🐛 fix(crd,controller): add seed rotation status fields and fix seed env dedupe (#1557, #1556)
+🐛 fix(crd,controller): add seed rotation status fields and fix seed env dedupe (#1557, #1556)
+• Closes #1557
+• Closes #1556
+• This PR addresses two related issues:
+• 1. #1557 - CRD Status Fields for Seed Rotation Observability:
+•    - Adds three status fields to StellarNodeStatus: observedSeedSecretVersion,
+•      observedPassphraseSecretVersion, lastSecretRotationTime
+•    - Updates config/crd/stellarnode-crd.yaml, charts/stellar-operator/templates/crd.yaml,
+•      schemas/crd/StellarNode-stellar.org-v1alpha1.json, docs/api-reference.md,
+•      and all 5 Helm rendered goldens
+•    - Updates secret_watcher.rs to write all three fields via new rotation_status_patch()
+•    - Adds schema validation tests in secret_rotation_schema_test.rs
+• 2. #1556 - Duplicate STELLAR_CORE_SEED Env Var Validation:
+•    - Changes build_pod_template to use merge_env_overrides() instead of Vec::extend
+•      for seed injection, preventing duplicate STELLAR_CORE_SEED entries
+•    - Documents the dedupe behavior and precedence in CONTRIBUTING.md
+•    - Adds comprehensive unit + property-based tests in seed_env_dedupe_test.rs
+• Also fixes two pre-existing build breaks on main:
+• - Missing closing brace in reconciler.rs:476 (tokio::spawn block)
+• - TypedLocalObjectReference import path in ledger_migration.rs for k8s-openapi 0.22
+• - resources_test.rs path fixes for default_readiness_probe, build_statefulset, build_deployment
+• Signed-off-by: Shindai Ufulul <ufululshindai23@gmail.com>
+✨ feat(crd): express node and audit isolation boundaries on Tenant (#1500)
+🐛 fix: #1629 [EPIC] Add bats Coverage for dep-gate Script
+• Closes #1629
+🐛 fix: #1628 [EPIC] Add bats Coverage for repo-health Script
+• Closes #1628
+🐛 fix: #1627 [EPIC] Add Makefile Targets for CI-Only Helper Scripts
+• Closes #1627
+🐛 fix: #1626 [EPIC] Wire Federation Secrets Sync Script into Makefile and
+• Closes #1626
+✨ feat: wire WELCOME_TEMPLATE.md into first-contribution workflow
+• - Add .github/workflows/welcome-first-contribution.yml
+• - Triggers on issues[opened] and pull_request_target[opened]
+• - Queries prior issues and PRs to prevent duplicate greetings
+• - Reads template content dynamically from .github/WELCOME_TEMPLATE.md
+• - Scopes permissions to issues:write and contents:read only
+• Merge pull request #1643 from Mathews-25/drips/1630-1631-1632-1633
+• Add bats coverage for rotation/dead-code scripts, document harness, enable mkdocs strict
+• Merge pull request #1642 from mayasimi/fix/readiness-probe-and-container-commands
+🐛 fix: comprehensive readiness probe state coverage and explicit contai…
+• Merge pull request #1641 from Goodnessukaigwe/fix/1481-unified-observability-contract-across-logs-metrics-and-traces
+• [1481] [EPIC] Unified Observability Contract Across Logs, Metrics, and Traces
+• Merge pull request #1640 from Goodnessukaigwe/fix/1482-automatic-drain-rescheduling-orchestrator-for-planned-maintenance
+• [1482] [EPIC] Automatic Drain & Rescheduling Orchestrator for Planned Maintenance
+• Merge branch 'main' into fix/1482-automatic-drain-rescheduling-orchestrator-for-planned-maintenance
+• Merge pull request #1639 from Goodnessukaigwe/fix/1483-cryptographic-policy-engine-for-runtime-admission-decisions
+• [1483] [EPIC] Cryptographic Policy Engine for Runtime Admission Decisions
+• Merge branch 'main' into fix/1483-cryptographic-policy-engine-for-runtime-admission-decisions
+🐛 fix: #1633 [EPIC] Enable mkdocs Strict Mode for Link and Nav Integrity
+• Closes #1633
+🐛 fix: #1632 [EPIC] Document bats Test Harness Usage in CONTRIBUTING
+• Closes #1632
+🐛 fix: #1631 [EPIC] Add bats Coverage for dead-code-report Script
+• Closes #1631
+🐛 fix: #1630 [EPIC] Add bats Coverage for secret-rotation-check Script
+• Closes #1630
+🐛 fix: comprehensive readiness probe state coverage and explicit container commands
+• Resolves #1559, #1558
+• ## Changes
+• ### Readiness Probe State Machine (#1559)
+• - Updated default_readiness_probe in resources.rs to handle all stellar-core states
+• - Accept only Synced! and Tracking! as ready states
+• - Reject all other states: CATCHING_UP, SYNCING, JOINING_SCP, BOOTING_UP, DISCONNECTED, etc.
+• - Prevents routing traffic to nodes that cannot participate in consensus
+• - Improved script using case statement for explicit state matching
+• ### Container Commands for All Node Types (#1558)
+• - Added optional command and args fields to StellarNodeSpec CRD
+• - Implemented explicit commands for all node types in build_container:
+•   - Validator: /usr/bin/stellar-core run --conf /config/stellar-core.cfg
+•   - Horizon: /stellar-horizon
+•   - SorobanRpc: /stellar-rpc
+• - Eliminates reliance on image CMD which may be empty or missing
+• - Supports custom image overrides via spec.command and spec.args
+• ### Testing
+• - Added comprehensive unit tests for readiness probe state handling
+• - Added tests for container command generation and CRD overrides
+• - Tests verify all state transitions and command configurations
+• ### Documentation
+• - Created docs/operations/readiness-probe-states.md
+•   - Documents all stellar-core states and readiness criteria
+•   - Includes troubleshooting guides and monitoring recommendations
+• - Created docs/operations/container-commands.md
+•   - Explains default commands and override mechanism
+•   - Provides examples and best practices
+• - Updated docs/operations/index.md with new doc links
+• ## Testing
+• Run tests with:
+• cargo test -p stellar-k8s readiness_probe
+• cargo test -p stellar-k8s container_command
+✨ feat(observability): versioned resource-attribute contract
+• Publish a JSON Schema shared by logs, metrics, and traces, enforce it at
+• OTel ingest with dead-letter routing, and lint unknown attributes in CI.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+✨ feat(maintenance): declarative MaintenancePlan drain orchestrator
+• Coordinate PDB-aware draining, replacement prewarming, SLO verification,
+• and abort/recovery through a MaintenancePlan CR rather than serial scripts.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+✨ feat(admission): signed policy-bundle engine with fail-closed verification
+• Evaluate CEL policy bundles at admission only after Ed25519 trust-root
+• verification, cache verified digests, and require dual approval for
+• emergency override plus explicit rollback of the last valid bundle.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+
+
 ## Chart v3.3.0 (2026-09-28) [minor]
 
 • Merge pull request #1638 from Goodnessukaigwe/fix/1484-cost-aware-workload-placement-across-spot-and-on-demand-capacity
