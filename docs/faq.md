@@ -7,6 +7,7 @@ Welcome to the Stellar-K8s FAQ! This document addresses common questions and iss
 - [Performance & Scaling](#performance--scaling-questions) (Storage, Disk Management, Resource Usage)
 - [Troubleshooting](#troubleshooting-questions) (Health Checks, Peer Discovery, Networking)
 - [General Operations](#general-operations-questions) (Deployment, Updates, Monitoring)
+- [Deployment FAQ](#deployment-faq) (First Validator, Testnet Onboarding)
 
 ---
 
@@ -600,6 +601,52 @@ See [Backup Verification](./backup-verification.md) and [Volume Snapshots](./vol
 **Best practice:** Use disk scaling for immediate capacity needs and pruning for long-term cost optimization on Mainnet.
 
 See [Archive Pruning](./archive-pruning.md) and [Proactive Disk Scaling](./proactive-disk-scaling.md).
+
+---
+
+## Deployment FAQ
+
+### Q: How do I deploy my first validator on the public testnet? (Testnet onboarding start to finish)
+
+**A:** Testnet is the right place to start: it uses the same operator workflow as Mainnet, but the ledger is small (~5M ledgers vs 50M+), sync is fast (2–6 hours on modest hardware), and mistakes cost nothing. Here is the complete path from zero to a synced testnet validator:
+
+**1. Prerequisites and operator installation.** Work through the [Getting Started](./getting-started/index.md) track: [Prerequisites](./getting-started/prerequisites.md) → [Installation](./getting-started/installation.md) → [Quick Start](./getting-started/quick-start.md). You need a Kubernetes 1.28+ cluster, kubectl, and Helm 3.x.
+
+**2. Create the seed secret.** Generate a keypair and store the secret seed in Kubernetes (never commit seeds or put them in the manifest):
+
+```bash
+docker run --rm stellar/stellar-core:latest stellar-core gen-seed
+kubectl create secret generic validator-seed-testnet \
+  --from-literal=seed='SBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' \
+  -n stellar
+```
+
+For KMS/Vault-backed seed handling and rotation, see [Secrets Management](./secret-management-kms.md).
+
+**3. Apply the example manifest.** Use [`examples/validator-testnet.yaml`](../examples/validator-testnet.yaml) as-is for your first boot — it is the canonical source for Testnet defaults (`network: testnet` selects the SDF Test Network passphrase and default history archives, with balanced 500m/1Gi requests and 100Gi storage):
+
+```bash
+kubectl apply -f examples/validator-testnet.yaml
+kubectl get stellarnodes -n stellar
+```
+
+**4. First boot.** The pod starts, opens outbound peer connections, and progresses through the readiness states (`Booting` → `Joining SCP` → `Synced!`). Watch it:
+
+```bash
+kubectl logs -n stellar -f $(kubectl get pods -n stellar -o name | head -1)
+kubectl exec -n stellar <validator-pod> -- curl -s http://localhost:11626/info
+```
+
+`Joining SCP` for a while is normal; what you want to see next is `Synced!`. The state machine behind the readiness probe is documented in [Readiness Probe States](./operations/readiness-probe-states.md).
+
+**5. Verify sync.** A synced validator reports `Synced!` from the `/info` endpoint and is added back to the Service endpoints by the operator.
+
+**Where to go next:**
+
+- Step-by-step walkthrough with screenshots of each check: [Deploy a Testnet Validator](./tutorials/deploy-testnet-validator.md)
+- Full deployment guide (quorum sets, archives, production options): [Validator Deployment Guide](./deployment-guides/validator.md)
+- Two facts to keep straight from day one: network passphrases and seeds. The **passphrase is derived from your manifest's `network:` field — don't hardcode it** (`testnet` → `Test SDF Network ; September 2015`, `mainnet` → `Public Global Stellar Network ; September 2015`); see [Network Isolation](./network-isolation.md) for why cross-network mixing is dangerous. **Seeds are always referenced via `validatorConfig.seedSecretRef`** pointing at a Kubernetes Secret, as in step 2 above — the [API reference for `seedSecretRef`](./api-reference.md) covers the field's exact behavior.
+- Testnet firewall notes (outbound peer ports) live in the [Network Configuration Guide](./networking/index.md)
 
 ---
 
