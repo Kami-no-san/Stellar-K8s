@@ -1193,7 +1193,7 @@ pub struct AutoscalingConfig {
     /// Predictive scaling configuration.
     ///
     /// When enabled, the operator uses a Holt-Winters forecasting model to
-    /// predict the next hour's ledger volume and pre-emptively adjusts
+    /// predict the next hour's ledger volume and preemptively adjusts
     /// `minReplicas` before traffic spikes occur.
     ///
     /// Only applicable to `Horizon` nodes.

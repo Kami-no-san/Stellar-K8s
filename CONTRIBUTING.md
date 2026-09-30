@@ -93,6 +93,12 @@ The full checklist, command rationale, and per-step details live in the
 [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md).
 If your change adds shell scripts, also run `make shellcheck`.
 
+You can also run spell checking locally using `codespell`:
+```bash
+pip install codespell
+codespell --ignore-words=.codespellignore --skip="Cargo.lock,package-lock.json,target,node_modules,vendor,*-vendor" docs/ src/ *.md
+```
+
 ## 4. Commit Message Examples
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/).
