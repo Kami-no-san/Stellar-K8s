@@ -313,6 +313,12 @@ jobs:
       - name: Install YAML tooling
         run: pip install --quiet pyyaml jsonschema
 
+      - name: Install codespell
+        run: pip install --quiet codespell
+
+      - name: Run codespell
+        run: codespell --ignore-words=.codespellignore --skip="Cargo.lock,package-lock.json,target,node_modules,vendor,*-vendor" docs/ src/ *.md
+
       - name: Run shell safety gate
         run: python3 scripts/check-shell-safety.py
 

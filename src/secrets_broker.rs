@@ -13,7 +13,7 @@
 //! Unified secrets broker with dynamic, short-lived credential issuance (#1497).
 //!
 //! All workload secret access goes through this control point. The broker
-//! authenticates the requestor by workload identity (SPIFFE/mTLS style),
+//! authenticates the requester by workload identity (SPIFFE/mTLS style),
 //! issues TTL-bounded credentials (<= 1h, auto-renewable), attributes every
 //! issuance, logs static-secret reads for elimination tracking, and survives
 //! primary failover without failed fetches (leases are retained in memory and
