@@ -110,6 +110,7 @@ pub mod canary_deployment;
 pub mod canary_promotion_controller;
 pub mod capacity_planning;
 pub mod carbon_aware;
+
 pub mod cli;
 pub mod commands;
 pub mod compliance;
@@ -131,6 +132,7 @@ pub mod dependency_contract;
 pub mod degradation;
 pub mod deployment_strategy;
 pub mod error;
+
 pub mod error_budget;
 pub mod rollback_engine;
 pub mod event_processing;
@@ -157,6 +159,7 @@ pub mod plugin_sdk;
 pub mod policy_engine;
 pub mod policy_promotion;
 pub mod preflight;
+#[path = "profiling/mod.rs"]
 pub mod profiling;
 pub mod provenance;
 // pub mod replica_quotas; // TODO: restore when module is implemented
@@ -171,6 +174,7 @@ pub mod sla;
 pub mod secrets_broker;
 pub mod search;
 pub mod security;
+#[path = "telemetry.rs"]
 pub mod telemetry;
 pub mod version_check;
 pub mod websocket_streaming;
