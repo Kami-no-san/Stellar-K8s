@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
+## Chart v2.14.0 (2026-10-01) [minor]
+
+• Merge pull request #408 from Kingsuite/feat/Telemetry
+✨ feat:implement Lock-Free Ring-Buffer for Real-Time SCP Message Telemetry
+• Merge pull request #426 from akindoyinabraham0-collab/feat/89-promql-alert-builder
+✨ feat(frontend): Visual PromQL Alerting Rule Builder & Test Workbench (#89)
+• Merge pull request #424 from DanProtocol/docs/issue-314-wasm-policy-guide
+📝 docs(wasm): enterprise WASM validation policy authoring guide
+• Merge pull request #425 from akindoyinabraham0-collab/feat/92-dr-command-center-v2
+✨ feat(frontend): DR Command Center & Failover Drill Workbench (#92)
+• Merge pull request #427 from akindoyinabraham0-collab/feat/90-rollout-timeline-visualizer
+✨ feat(frontend): StatefulSet Rolling Update & Ledger Catch-Up Timeline Visualizer (#90)
+📝 test(frontend): PodCard unit tests — 10 describe blocks (#90)
+✨ feat(frontend): PodCard TypeScript component for timeline visualizer (#90)
+📝 docs(frontend): 5 validated PrometheusRule YAML examples (#89)
+📝 test(frontend): PrometheusClient unit tests — 9 cases (#89)
+✨ feat(frontend): Prometheus query service with testAlertExpr (#89)
+✨ feat(frontend): typed DR API client (trigger/status/reset) (#92)
+📝 test(frontend): DR Command Center test suite — 9 describe blocks (#92)
+✨ feat(frontend): DR Command Center multi-panel dashboard (#92)
+📝 docs(wasm): enterprise WASM validation policy authoring guide (#314)
+• Add a step-by-step guide for enterprise node operators writing custom
+• WebAssembly validation policies for the Stellar-K8s operator.
+• New files:
+• - docs/development/wasm-policies.md — 1002-line enterprise guide covering:
+•     host ABI (get_input_len / read_input / write_output / log_message),
+•     input/output JSON schemas, full Rust plugin pattern, fail-open vs
+•     fail-closed configuration, ConfigMap packaging, operator deployment,
+•     end-to-end validation walkthrough, and an enterprise hardening checklist.
+• - examples/wasm-plugins/registry-enforcer/src/lib.rs — complete, compilable
+•     registry allow-list plugin (492 lines) with unit tests, audit annotations,
+•     and structured ValidationError output.
+• - examples/wasm-plugins/registry-enforcer/Cargo.toml — minimal cdylib crate
+•     with size-optimised release profile.
+• - examples/wasm-plugins/registry-enforcer/README.md — quick-start README.
+• Closes #314
+• Merge pull request #410 from Fayvor22/Audit
+• Audit
+✨ feat: [Documentation] Soroban Smart Contract Security Audit Checklist & Framework
+✨ feat: [Documentation] Soroban Smart Contract Security Audit Checklist & Framework
+✨ feat:implement Lock-Free Ring-Buffer for Real-Time SCP Message Telemetry
+✨ feat: [Documentation] Bare-Metal NVMe IOPS Tuning & Deployment Guide
+✨ feat: [Documentation] Bare-Metal NVMe IOPS Tuning & Deployment Guide
+
+
 ## Chart v2.13.0 (2026-10-01) [minor]
 
 • Merge pull request #395 from Diamond437rough/anycast
