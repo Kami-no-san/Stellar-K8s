@@ -149,6 +149,7 @@ nav:
     - Static Analysis Gates: development/static-analysis-gates.md
     - License Header Compliance: development/license-headers.md
     - Automated Load Testing: load-testing.md
+    - Chaos Engineering Strategy: testing/chaos-engineering.md
     - YAML Schema Validation: yaml-schema-validation.md
     - Helm Chart Testing: helm-chart-testing.md
     - Database Migrations: database/migrations.md
