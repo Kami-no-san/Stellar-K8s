@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
+## Chart v2.13.0 (2026-10-01) [minor]
+
+• Merge pull request #395 from Diamond437rough/anycast
+✨ feat(network): implement BGP Anycast integration and fast route withd…
+• Merge pull request #414 from Fayvor22/core
+✨ feat: Implement [Documentation] Core/Horizon Decoupled Architecture Guide
+✨ feat: Implement [Documentation] Core/Horizon Decoupled Architecture Guide
+✨ feat: Implement [Documentation] Core/Horizon Decoupled Architecture Guide
+✨ feat: Implement [Documentation] Core/Horizon Decoupled Architecture Guide
+✨ feat: Implement [Documentation] Horizon Database High-Availability (HA) Replication Blueprint
+✨ feat: Implement [Documentation] Horizon Database High-Availability (HA) Replication Blueprint 
+• Feat: implement [Documentation] Horizon Database High-Availability (HA) Replication Blueprint
+✨ feat: [Documentation] Soroban Smart Contract Security Audit Checklist & Framework
+✨ feat: [Documentation] Bare-Metal NVMe IOPS Tuning & Deployment Guide
+✨ feat(network): implement BGP Anycast integration and fast route withdrawal for Horizon
+
+
 ## Chart v2.12.0 (2026-10-01) [minor]
 
 • Merge pull request #416 from CollinsC1O/basket
