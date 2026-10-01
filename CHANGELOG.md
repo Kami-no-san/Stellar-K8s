@@ -5,6 +5,266 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
+## Chart v2.12.0 (2026-10-01) [minor]
+
+• Merge pull request #416 from CollinsC1O/basket
+✨ feat: implement [Contract] Token Basket / Index Fund Factory
+• Merge pull request #417 from CollinsC1O/fixer
+🐛 fix: ci failing issue
+• Merge pull request #419 from CollinsC1O/bridge
+✨ feat: Implement Cross-Chain NFT (ERC-721 to Soroban) Bridge Vault
+• Merge pull request #420 from CollinsC1O/market
+✨ feat: [Contract] Concentrated Liquidity Automated Market Maker
+✨ feat: [Contract] Concentrated Liquidity Automated Market Maker
+✨ feat: [Contract] Concentrated Liquidity Automated Market Maker
+✨ feat: Implement Cross-Chain NFT (ERC-721 to Soroban) Bridge Vault
+✨ feat: implement [Contract] Smart Contract State Verification & Snapshot Oracle
+🐛 fix: ci failing issue
+🐛 fix: ci failing issue
+✨ feat: implement [Contract] Token Basket / Index Fund Factory
+• Merge pull request #148 from Fayvor22/heatmap
+✨ feat: implement [Frontend] Real-Time Resource Saturation Heatmap for …
+• Merge branch 'main' into heatmap
+• Merge pull request #150 from miriamisa022-cyber/feature/119-snapshot-sync-reconciler
+✨ feat(#119): implement multi-cluster snapshot synchronization reconciler
+• Merge pull request #153 from CRSabers/docs/issue-62-rbac-hardening
+📝 docs(security): add least-privilege RBAC hardening reference
+• Merge branch 'main' into docs/issue-62-rbac-hardening
+• Merge pull request #147 from acejayl/docs/101-local-dev-kind-guide
+📝 docs: add developer onboarding and local kind integration testing guide
+• Merge pull request #151 from Unclebaffa/feat/ingress-ssl-cert-monitor
+✨ feat(frontend): add public ingress and SSL/TLS certificate expiration…
+• Merge pull request #149 from miriamisa022-cyber/feature/120-dynamic-rate-limiter
+✨ feat(#120): implement dynamic rate-limiter engine for Soroban RPC gat…
+• Merge branch 'main' into feature/120-dynamic-rate-limiter
+• Merge pull request #152 from APKLEO/feat/55-ingress-tls-cert-dashboard
+✨ feat(frontend): add Ingress TLS certificate expiration dashboard (#55)
+• Merge pull request #155 from belloaliyu11/issue-58-pvc-recovery-playbook
+• Add PVC corruption recovery playbook
+• Merge branch 'main' into issue-58-pvc-recovery-playbook
+• Merge pull request #157 from Kingsley4867/feature/captive-core-supervisor-issue-82
+✨ feat: implement Captive Core Process Lifecycle Supervisor with Lock R…
+• Merge pull request #145 from Goodnessukaigwe/fix/104-documentation-custom-resource-definition-crd-architecture-reference-manual
+• [104] [Documentation] Custom Resource Definition (CRD) Architecture Reference Manual
+• Merge branch 'main' into fix/104-documentation-custom-resource-definition-crd-architecture-reference-manual
+• Merge pull request #146 from Goodnessukaigwe/fix/102-documentation-custom-resource-definition-crd-architecture-reference-manual
+• [102] [Documentation] Custom Resource Definition (CRD) Architecture Reference Manual
+• Merge pull request #97 from CollinsC1O/proxy
+✨ feat: Implement Upgradeability Proxy Controller with Delayed Timelock
+• Merge branch 'main' into proxy
+• Merge pull request #144 from Goodnessukaigwe/fix/107-documentation-disaster-recovery-backup-verification-automation-guide
+• [107] [Documentation] Disaster Recovery & Backup Verification Automation Guide
+• Merge branch 'main' into fix/107-documentation-disaster-recovery-backup-verification-automation-guide
+• Merge pull request #143 from akindoyinabraham0-collab/feat/quorum-intersection-matrix
+✨ feat(analytics): add quorum intersection matrix explorer
+• Merge branch 'main' into feat/quorum-intersection-matrix
+• Merge pull request #141 from orunganiekan/docs/131-132-133-109-enterprise-docs-and-operational-frameworks
+📝 docs: add RBAC multi-tenancy guide, telemetry manual, WASM gas tuning, and incident response framework (#131, #132, #133, #109)
+• Merge branch 'main' into docs/131-132-133-109-enterprise-docs-and-operational-frameworks
+• Merge pull request #136 from Praxhant97/main
+•  [Backend] Automated PVC Snapshotting Before Operator Version Upgrades
+• Merge branch 'main' into main
+• Merge pull request #64 from longyi2/security/rbac-network-hardening
+📝 docs: add Kubernetes security hardening manual
+• Merge pull request #156 from Danitello123/feature/htlc-escrow
+✨ feat: Implement Multi-Asset Escrow with Conditional Hash Timelock (HTLC)
+• Merge branch 'main' into security/rbac-network-hardening
+• Merge pull request #60 from abdulwahabmonilola-ctrl/docs/disaster-recovery-runbook
+📝 docs: add disaster recovery & quorum loss runbook
+• Merge branch 'main' into feature/captive-core-supervisor-issue-82
+📝 chore(helm): bump chart to v3.0.0 [skip ci]
+• Merge branch 'main' into main
+• Merge branch 'main' into heatmap
+📝 docs: add disaster recovery & quorum loss runbook
+• Adds a scenario-based operations runbook covering complete pod failure,
+• corrupted PVC recovery, and total quorum loss requiring a forced resync
+• from history archives. Each scenario follows Symptom/Diagnosis/
+• Mitigation/Resolution and uses only commands and StellarNode fields that
+• exist in the current operator (suspended, maintenanceMode, probes
+• overrides, forensicSnapshot, restoreFromSnapshot, the finalizer, and the
+• kubectl-stellar plugin subcommands).
+• Also documents the two-step 'Recovery Mode' pattern (relax the readiness
+• probe, then set maintenanceMode) needed to keep a pod alive and
+• un-reconciled during a long manual catchup, with a ready-to-adapt example
+• manifest for each step.
+• Signed-off-by: abdulwahabmonilola-ctrl <301061378+abdulwahabmonilola-ctrl@users.noreply.github.com>
+✨ feat: implement Captive Core Process Lifecycle Supervisor with Lock Recovery
+• Issue: #82
+• This implementation provides a dedicated supervisor thread that monitors
+• Captive Core process health and manages automatic recovery including:
+• Key Features:
+• - CaptiveCoreProcess: Handles process lifecycle (spawn, terminate, restart)
+•   * Graceful shutdown via SIGTERM with timeout
+•   * Forced termination via SIGKILL fallback
+•   * Safe lock file management and stale lock detection
+• - CaptiveCoreSupervisor: Monitors process health and coordinates recovery
+•   * Continuous health checks and IPC responsiveness monitoring
+•   * Stale lock detection on /var/lib/stellar/core.lock
+•   * Automatic process restart with configurable max attempts
+•   * Frozen IPC state recovery workflow
+•   * Multi-step recovery: graceful shutdown -> forced termination -> lock cleanup -> restart
+• Implementation Details:
+• - Lock removal strictly verifies process termination to prevent dual-process storage corruption
+• - IPC health checks monitor lock file recency as an indicator of process responsiveness
+• - Supervisor runs in a dedicated background task with configurable intervals
+• - Graceful recovery with exponential backoff and failure logging
+• Files Created:
+• - src/controller/captive/mod.rs - Module documentation and exports
+• - src/controller/captive/process.rs - Process lifecycle management
+• - src/controller/captive/supervisor.rs - Health monitoring and recovery coordination
+• Files Modified:
+• - src/controller/mod.rs - Added captive module registration and exports
+✨ feat: Implement Multi-Asset Escrow with Conditional Hash Timelock (HTLC)
+• Add PVC corruption recovery playbook
+📝 docs(security): extend RBAC audit for stock runtime
+• Audit the unavoidable read-only cluster observers and prove cluster-wide writes remain denied.
+• Signed-off-by: CRSabers <297297065+CRSabers@users.noreply.github.com>
+📝 docs(security): document stock runtime scope limits
+• Explain the unscoped background readers and keep their cluster permissions read-only instead of silently widening the write surface.
+• Signed-off-by: CRSabers <297297065+CRSabers@users.noreply.github.com>
+📝 docs(security): align strict RBAC with stock runtime
+• Document the stock binary's unavoidable read-only cluster observers while keeping cluster-wide writes denied and PSS enforcement scoped to node workloads.
+• Signed-off-by: CRSabers <297297065+CRSabers@users.noreply.github.com>
+📝 docs(security): add RBAC audit script
+• Signed-off-by: CRSabers <297297065+CRSabers@users.noreply.github.com>
+📝 docs(security): add strict RBAC example
+• Signed-off-by: CRSabers <297297065+CRSabers@users.noreply.github.com>
+📝 docs(security): add RBAC hardening reference
+• Signed-off-by: CRSabers <297297065+CRSabers@users.noreply.github.com>
+✨ feat(frontend): add Ingress TLS certificate expiration dashboard (#55)
+• - Add frontend/monitors/ module with React 18 + Vite
+• - certUtils.js: daysRemaining, statusFromDays, colorFromStatus,
+•   deriveCertRow, sortCertRows, filterCertRows, summaryCounts
+• - Status thresholds: expired (<0d), critical (<7d), warning (<30d), healthy (>=30d)
+• - CertificateStatusBadge: color-coded status pill using CSS custom props
+• - ForceRenewalButton: 5-state machine (idle/confirm/loading/done/error)
+•   with cert-manager managed check and accessibility labels
+• - IngressCertTable: sortable columns, status/namespace/search filters,
+•   pagination (10/25/50/100), expandable row detail panel
+• - IngressCertDashboard: summary stat cards, alert banner, legend
+• - mockCerts.js: 12 fixtures covering all 4 expiry buckets
+• - certUtils.test.js: 43 unit tests, all passing
+• - styles.css: full dark-theme stylesheet matching existing design system
+✨ feat(frontend): add public ingress and SSL/TLS certificate expiration monitor
+✨ feat(#119): implement multi-cluster snapshot synchronization reconciler
+• ## controller/src/snapshot/verifier.rs
+• - SHA-256 integrity checker with async 64 KiB chunked reads
+• - Constant memory footprint regardless of archive size (supports 20 GB+)
+• - VerificationResult with display, HTTP-friendly error conversion
+• - compute_sha256_sync() for CLI/test use; parse_sha256_sidecar() for sidecar files
+• - Unit tests: correct digest, mismatched digest, 4 MB synthetic file, sidecar parsing
+• ## controller/src/snapshot/reconciler.rs
+• - SnapshotReconciler: discover → download → verify → extract → bootstrap
+• - discover_latest_snapshot(): S3 ListObjectsV2 picks most-recent .tar.gz by mtime
+• - download_archive(): streaming GetObject piped to disk (tokio::io::copy semantics);
+•   never buffers full archive in pod RAM
+• - resolve_checksum(): priority chain — inline > .sha256 sidecar > S3 object metadata
+• - extract_tar_gz(): blocking decompression via flate2 + tar; atomic tmp→rename
+•   strategy; preserves old data as .old for emergency rollback
+• - write_sentinel(): JSON .bootstrapped file recording ledger sequence + timestamp
+• - SnapshotReconcilerConfig: bucket, prefix, staging_dir, data_dir, aws_region,
+•   skip_if_bootstrapped, s3_api_timeout
+• - ReconcileOutcome: bootstrapped flag, verification_message, ledger_sequence
+• ## Integration tests (no real S3 required):
+• - bootstrap_flow_end_to_end: full local pipeline (write tar.gz → SHA-256 →
+•   verify → extract → sentinel → assert ledger_sequence)
+• - extract_tar_gz_preserves_existing_as_old: rollback safety
+• - write_sentinel_creates_file: validates JSON contents
+• - snapshot_ref_display_name, reconcile_outcome_is_serializable
+• ## Wiring
+• - Rename existing snapshot.rs → csi_snapshot.rs (CSI VolumeSnapshot, no conflict)
+• - Add pub mod snapshot + mod csi_snapshot to controller/mod.rs
+• - Export SnapshotRef, ReconcileOutcome, SnapshotReconcilerConfig from controller
+• - Update snapshot_worker.rs and reconciler.rs to use csi_snapshot::reconcile_snapshot
+• - Add tar = "0.4" to Cargo.toml
+• Resolves #119
+✨ feat(#120): implement dynamic rate-limiter engine for Soroban RPC gateway
+• - Add src/gateway/ratelimit/window.rs: per-IP sliding window tracker
+•   - DashMap-based concurrent hash map for lock-free IP lookup
+•   - VecDeque ring-buffer for O(1) amortised timestamp eviction
+•   - retry_after() helper for Retry-After header generation
+•   - Sub-millisecond evaluation path; capacity bounded per IP
+• - Add src/gateway/ratelimit/engine.rs: CPU-aware rate-limit engine
+•   - Linear interpolation between base_rps and min_rps on cpu_low/high thresholds
+•   - CPU utilisation sampled from /proc/stat every 500 ms (background task)
+•   - Idle client eviction every 60 s to bound memory growth
+•   - Atomic counters for total/rejected metrics
+•   - extract_client_ip() helper for X-Forwarded-For header parsing
+•   - RateLimitDecision includes HTTP status, error body, Retry-After, Reset headers
+•   - Dynamic config hot-reload via async RwLock
+• - Add src/gateway/mod.rs, src/gateway/ratelimit/mod.rs: module wiring
+• - Expose pub mod gateway in src/lib.rs
+• - Add dashmap = "6" to Cargo.toml
+• Tests (embedded in engine.rs and window.rs):
+• - Unit tests for window state (allow, reject, expiry, retry_after)
+• - Unit tests for engine (CPU interpolation, throttling, per-IP isolation,
+•   metrics tracking, IP extraction)
+• - concurrent_10k_requests: 100 threads × 100 req = 10,000 total;
+•   limit=50/IP → asserts exactly 5,000 allowed, 5,000 rejected
+• Resolves #120
+✨ feat: implement [Frontend] Real-Time Resource Saturation Heatmap for Worker Nodes
+📝 docs: add local development guide for kind
+• Adds docs/getting-started/local-dev.md, a from-clean-machine guide to running
+• the operator on a local kind cluster: pinned tool versions, per-platform setup
+• for macOS, Linux and Windows (WSL2), the make quickstart path, both
+• hot-reloading workflows, the ignored kind e2e suite, a Makefile shortcut table,
+• and diagnostics for the Docker and Kubernetes resource problems that actually
+• block a first run.
+• Every command, path and target is taken from the repository rather than
+• assumed. Notes that the repo currently names four different Rust versions
+• (1.88 in README/CONTRIBUTING, 1.92 in the CI MSRV job, 1.93 in Dockerfile,
+• 1.94 in Dockerfile.dev) and recommends stable 1.92+, which satisfies all four.
+• DEVELOPMENT.md now points new contributors at the guide and deep-links to the
+• e2e section.
+• Signed-off-by: acejayl <211288537+acejayl@users.noreply.github.com>
+📝 docs: add CRD architecture reference manual
+• Document StellarNode, Horizon, and SorobanRpc schemas from the
+• published OpenAPI CRD and add production-ready configuration examples.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+🐛 fix: allow multi-document YAML in pre-commit check-yaml
+• Kubernetes example manifests in this repo are multi-document; check-yaml must accept them so the backup-verifier CronJob can pass CI.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+📝 docs: add StellarNode CRD architecture reference manual
+• Provide a schema-accurate reference for Validator, Horizon, and SorobanRpc
+• node types, plus production YAML examples validated against the published CRD.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+📝 docs: add backup verification automation guide (#107)
+• Nightly isolated restore tests are the only reliable proof that snapshots can be recovered; document the CronJob, SQL/ledger checks, notify wiring, and guaranteed cleanup.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+✨ feat(analytics): add quorum intersection matrix explorer
+• Add a batched WebGL matrix for validator trust and quorum overlap diagnostics with interactive dependency inspection.
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+🐛 fix: resolve pre-commit blockers for docs PR
+• Allow multi-document Kubernetes YAML in check-yaml, remove invalid
+• Cargo 1.98 package profile overrides, and apply rustfmt.
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+📝 docs: add RBAC multi-tenancy guide, telemetry manual, WASM gas tuning, and incident response framework
+• Closes #131, Closes #132, Closes #133, Closes #109
+• Co-authored-by: Cursor <cursoragent@cursor.com>
+• fix
+• Merge upstream/main (agnesnaomiolim-cloud:main, the actual PR base) into proxy
+• This fork's own main was stale relative to the PR's real target branch,
+• which had since picked up unrelated fixes (Helm chart whitespace/YAML
+• repairs, Helm unit test fixes, etc.). Because `proxy` was branched from
+• the stale fork main, PR #97's CI diff against the real base included all
+• of those already-fixed files as "changed", and ran the old, still-broken
+• versions -- which is why Helm Lint & Schema Validation, Security Audit,
+• and Lint & Format were failing on a PR that never touched any of those
+• files. Merging the real base in gets the PR diff back down to just the
+• proxy-controller work.
+🐛 fix: add trailing newline to committed test snapshot files
+• The repo's end-of-file-fixer pre-commit hook (and its CI job) requires
+• every tracked file to end with a newline. soroban-sdk's Env::to_snapshot
+• writer doesn't add one, which was failing the Pre-commit Hooks check on
+• PR #97.
+• Merge branch 'main' of https://github.com/agnesnaomiolim-cloud/Stellar-K8s
+• Add pre-upgrade PVC snapshot gating
+✨ feat: Implement Upgradeability Proxy Controller with Delayed Timelock
+📝 docs: add Kubernetes security hardening manual
+• Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+
 ## Chart v2.8.0 (2026-09-03) [minor]
 
 • Merge pull request #135 from CollinsC1O/fee-bump
