@@ -14,7 +14,8 @@ apiVersion: v2
 name: stellar-operator
 description: A Helm chart for the Stellar-K8s Kubernetes Operator
 type: application
-
+version: 2.11.1
+appVersion: "2.11.1"
 keywords:
   - stellar
   - kubernetes
