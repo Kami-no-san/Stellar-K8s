@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
+## Chart v2.19.0 (2026-10-02) [minor]
+
+• Merge pull request #350 from moveeswift-uncap/fix/issue-245-enhancement-zero-downtime-egress-traffic
+✨ feat: zero-downtime egress traffic shaping controller
+🐛 fix: ## [Enhancement] Zero-Downtime Egress Traffic Shaping Contro (#245)
+
+
 ## Chart v2.18.0 (2026-10-02) [minor]
 
 • Merge pull request #368 from Viccodes11/enhancement/leader-election-metrics
