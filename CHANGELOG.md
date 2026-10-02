@@ -5,6 +5,278 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 
+## Chart v2.18.0 (2026-10-02) [minor]
+
+• Merge pull request #368 from Viccodes11/enhancement/leader-election-metrics
+• [Enhancement] Automated Leader Election Failover for Operator High Availability
+• Merge pull request #359 from Charity5654/feat/331-wasm-upgrade-proxy
+✨ feat(contracts): decentralized WebAssembly upgrade proxy with 7-day timelock (#331)
+• Merge pull request #357 from soladayo21963-coder/feat/215-multisig-wallet-factory
+✨ feat(contracts): implement multi-signature wallet factory on Soroban
+• Merge pull request #398 from Senatormike001/fix/issue-227-enhancement-horizon-db-ha-replication-monitor
+✨ feat: Horizon DB replication monitor with lag alerts
+• Merge pull request #356 from oycodes/fix/issue-130-documentation-disaster-recovery-failover
+📝 docs: add DR failover and snapshot restoration runbook
+• Merge pull request #358 from devogechukwu/docs/pvc-optimization
+📝 docs: Optimize PVCs for Captive Core sync
+• Merge pull request #361 from Rayhab2000/feat/296-yield-bearing-stablecoin
+✨ feat(contracts): add programmable yield-bearing stablecoin (#296)
+• Merge pull request #364 from Isihaq123/docs/319-gitops-argocd
+📝 docs(#319): GitOps deployment architecture via ArgoCD
+• Merge pull request #365 from danielchukuma-dev/feat/333-cross-shard-liquidity-state-verifier
+✨ feat(contract): cross-shard liquidity state verifier (Closes #333)
+• Merge pull request #367 from Viccodes11/dr-datacenter-recovery
+📝 docs: add disaster recovery runbook for datacenter loss and vault recovery script
+• Merge pull request #363 from Adjutant500/feature/289-soroban-gas-metering-calibrator
+✨ feat(tools): Automated Soroban Gas Metering Calibrator
+• Merge pull request #370 from AGWAM001/docs/issue-295-chaos-mesh-strategy
+📝 docs(chaos): Chaos Mesh chaos engineering strategy for the operator (issue #295)
+• Merge pull request #374 from Nuruddeen61/main
+📝 docs: zero-downtime protocol upgrade runbook (#293)
+• Merge pull request #371 from Chummy-debug/security/issue-309-enhancement-kubectl-stellar-cli-extension-for
+✨ feat: kubectl-stellar CLI for validator health diagnostics
+🐛 fix: ## [Enhancement] Horizon DB HA Replication Monitor (Frontend (#227)
+• Fix formatting issues in operations documentation
+• security: ## [Enhancement] `kubectl-stellar` CLI Extension for Validat (#309)
+📝 docs(chaos): add Chaos Mesh chaos engineering strategy and example experiments
+• Add leader status Prometheus gauge and metric updates for HA leader election
+📝 docs: add disaster recovery runbook for datacenter loss and vault recovery script
+✨ feat(contract): cross-shard liquidity state verifier (#333)
+• Implements issue #333 — Cross-Shard Liquidity State Verifier (200-point
+• epic).  A new Soroban coordinating contract that enables atomic multi-AMM
+• arbitrage trades across any number of independent pool contracts with
+• absolute cryptographic guarantees against partial execution.
+• ## New contract: contracts/cross-shard/
+• ### src/coordinator.rs
+• Core orchestration logic:
+• - initialize(): one-time setup with admin address
+• - execute_atomic_swap(initiator, transitions): ordered Vec<ShardTransition>
+•   execution with all-or-nothing atomicity
+•   * Validates inputs: MIN_TRANSITIONS=2, MAX_TRANSITIONS=16, deadline, amount
+•   * Acquires advisory locks on all target pools atomically via acquire_all()
+•   * Sets InFlight reentrancy guard before any cross-contract invocation
+•   * Invokes each AMM leg via env.invoke_contract()
+•   * Verifies min_out slippage bound after each leg
+•   * On any failure: calls env.panic_with_error() to force a complete
+•     transaction rollback — all state changes from all preceding legs revert
+•   * On success: persists SwapSnapshot(Committed), releases locks, clears guard
+•   * Emits structured events at every stage (swap_ok, swap_fail, leg_exec,
+•     leg_ok)
+• - set_paused(), transfer_admin(), get_admin(), is_paused(), is_inflight(),
+•   last_swap_id(), get_swap_snapshot()
+• - Zero multi-threading: no Mutex/RwLock, no async, fully compatible with
+•   Stellar Core's single-threaded sequential scheduler
+• ### src/locks.rs
+• Advisory pool-lock state machine:
+• - acquire(pool, swap_id, ttl): writes PoolLock to persistent storage;
+•   rejects if a non-expired lock already exists
+• - release(pool): removes lock; rejects if held by a different coordinator
+• - force_release(pool): any caller may clear an expired lock (anti-DoS)
+• - acquire_all(pools, swap_id): two-phase check-then-write to prevent partial
+•   acquisition and deadlocks
+• - release_all(pools): bulk release tolerating already-gone entries
+• - is_locked(pool), read_lock(pool): non-mutating inspection
+• - LOCK_TTL_LEDGERS=60 (~5 min at 5 s/ledger)
+• - Concurrency safety note: all locking is persistent-storage writes committed
+•   atomically with the rest of the transaction; no OS primitives needed
+• ### src/types.rs
+• XDR-serialisable (#[contracttype]) domain types:
+• - DataKey enum: Admin, Paused, SwapCounter, PoolLock(Address),
+•   SwapSnapshot(u64), InFlight
+• - ShardTransition: pool, function, amount_in, min_out, token_in, token_out,
+•   deadline
+• - TransitionResult: pool, amount_out, succeeded
+• - SwapSnapshot: id, initiator, legs, start_ledger, status
+• - SwapStatus: InFlight / Committed / Reverted
+• - PoolLock: pool, held_by, acquired_at, expires_at, swap_id
+• ### src/errors.rs
+• CrossShardError (#[contracterror], #[repr(u32)]):
+• - AlreadyInitialized(1), NotInitialized(2)
+• - Unauthorized(20), NotSwapInitiator(21)
+• - TooFewTransitions(30), TooManyTransitions(31), InvalidAmount(32),
+•   DeadlineExpired(33), SlippageExceeded(34), LegInvocationFailed(35),
+•   Overflow(36)
+• - PoolAlreadyLocked(40), LockNotOwned(41), LockExpired(42), LockStillValid(43)
+• - ReentrantCall(50), ContractPaused(51)
+• ### src/lib.rs
+• #[contract] CrossShardCoordinator with full #[contractimpl]:
+• - Thin wrappers delegating to coordinator:: and locks:: modules
+• - Re-exports all public types for external consumers
+• ### src/test.rs
+• 9 integration tests using soroban-sdk testutils:
+• - MockAmm: #[contract] stub with configurable rate and deliberate-fail mode
+• - three_pool_swap_all_succeed: happy path, verifies output amounts and
+•   snapshot
+• - three_pool_swap_third_fails_all_revert: the required issue #333 validation
+•   — induces failure in AMM C, asserts AMM A and AMM B swap_count=0, locks
+•   released, InFlight cleared, SwapCounter reverted
+• - slippage_on_second_leg_reverts_all: min_out guard triggers full revert
+• - expired_deadline_rejected_before_execution: deadline check before any AMM
+•   call
+• - too_few_transitions_rejected, swap_rejected_when_paused,
+•   double_initialize_rejected, force_release_unexpired_lock_rejected,
+•   concurrent_swap_rejected_if_pool_locked
+• ### Cargo.toml
+• soroban-sdk 22.0.0 with features=["alloc"]; standalone [workspace];
+• crate-type = ["cdylib", "rlib"]; release profile: opt-level=z, lto=true,
+• panic=abort, overflow-checks=true
+• Closes #333
+📝 docs(#319): GitOps deployment architecture via ArgoCD
+• - Add docs/operations/gitops-argocd.md with complete ArgoCD integration
+•   guide covering architecture overview, Kustomize overlay structure,
+•   Captive Core upgrade verification gates (schema, compat-check,
+•   OPA/conftest, smoke test), pull-request workflow, sync wave ordering,
+•   secret management patterns, drift detection, and end-to-end
+•   validation procedure (sub-3-minute convergence check).
+• - Add examples/gitops/base/ with StellarNode skeletons for Validator,
+•   SorobanRpc, and Horizon node types and a shared kustomization.yaml.
+• - Add examples/gitops/overlays/{testnet,futurenet,mainnet}/ with
+•   environment-specific Kustomize patches. Mainnet overlay enforces
+•   retentionPolicy: Retain on all storage. Futurenet uses Delete given
+•   periodic network resets.
+• - Add examples/gitops/argocd/ with app-of-apps.yaml (bootstrap entry
+•   point), testnet-app.yaml and futurenet-app.yaml (automated sync),
+•   mainnet-app.yaml (manual sync only, requires ≥2 reviewer approvals),
+•   and a README with bootstrap and promotion commands.
+• Enforces: manual kubectl edits are forbidden; GitHub is the single
+• immutable source of truth for all node infrastructure.
+• Closes #319
+✨ feat(tools): add automated Soroban gas metering calibrator (#289)
+• Implements a standalone Rust binary at tools/gas-calibrator/ that
+• benchmarks host hardware with WASM micro-benchmarks and generates
+• dynamically-tuned Soroban gas configuration profiles.
+• Key modules:
+• - src/benchmarks.rs  – six WASM micro-benchmarks (SHA-256 hash loop,
+•   Blake3 hash loop, memory allocation, arithmetic loop, branch-heavy,
+•   memory copy) executed inside wasmtime for realistic Soroban-style
+•   overhead measurement.
+• - src/profiler.rs    – CPU affinity pinning via taskset(1), process
+•   priority tuning via renice, hardware detection (cpu count/brand/freq,
+•   RAM, OS), and a warm-up phase to prime the JIT before timing.
+• - src/main.rs        – clap CLI with --iterations, --output, --format
+•   (json|yaml), --cpu, --warmup-ms, --no-pin flags; derives Soroban CPU
+•   instruction pricing tiers from benchmark means scaled to the measured
+•   CPU frequency; emits a variance report flagging benchmarks with
+•   coefficient of variation > 5 %.
+• Output (JSON or YAML) includes:
+•   - hardware profile (CPU brand, cores, freq, RAM, OS, pinned core)
+•   - raw per-benchmark statistics (mean, stddev, p50/p95/p99)
+•   - gas_tiers mapped to Soroban host function names
+•   - variance_report with confidence levels and recommendations
+• The crate is a standalone workspace (tools/gas-calibrator/Cargo.toml)
+• following the same pattern as tools/manifest-validator.
+• Closes #289
+✨ feat(contracts): add programmable yield-bearing stablecoin (#296)
+• Implements a SEP-41-compatible Soroban stablecoin with:
+• - Programmable compliance hooks (mint/burn gate)
+•   - On-chain sanctions blacklist: permanently blocks an address from all
+•     inbound/outbound flows; removal requires a stricter multi-sig quorum
+•   - Account freeze: reversible halt on all flows for a specific address;
+•     enforced before every transfer, mint, burn, and approve
+• - Multi-sig yield distribution (distribute_yield)
+•   - Proportional allocation: balance_i * yield / total_supply_snapshot
+•   - Requires configurable k-of-n threshold from a registered signer set
+•   - Duplicate-signer detection (O(n^2) over small signer sets, no std needed)
+•   - Blacklisted/frozen recipients silently skipped to prevent a single
+•     non-compliant address from blocking an entire distribution epoch
+•   - Floor-division dust stays unminted to keep total_supply exact
+• - Storage segregation
+•   - Instance storage: admin config + multi-sig thresholds (kept small)
+•   - Persistent storage: per-address balances, allowances, flags
+•   - Thresholds live exclusively in instance storage, segregated from user data
+• - 32 tests all green (cargo test --lib)
+•   - Happy-path: mint, burn, transfer, approve/transfer_from
+•   - Compliance: blacklist and freeze block all flows end-to-end
+•   - Yield: proportional math, dust, skip restricted recipients
+•   - Multi-sig: quorum enforcement, duplicate signer rejection
+•   - Fuzz-style: 20-signer / 50-holder distribution, mass mint supply
+•     integrity, 30-holder blacklist cryptographic block verification
+• Key modules:
+•   contracts/yield-stablecoin/src/lib.rs    - contract + yield distribution
+•   contracts/yield-stablecoin/src/hooks.rs  - compliance gate
+•   contracts/yield-stablecoin/src/storage.rs - shared DataKey definitions
+•   contracts/yield-stablecoin/src/test.rs   - full test suite
+• Closes #296
+• Create arm-upgrade.sh
+✨ feat(contracts): add decentralized WebAssembly upgrade proxy (#331)
+• Implements the 7-day timelocked WASM upgrade proxy for Soroban smart
+• contracts as specified in issue #331.
+• What was implemented:
+• - contracts/upgrade-proxy/Cargo.toml
+•   Standalone Soroban workspace (separate from the root Kubernetes
+•   operator workspace), release profile set to wasm32 optimisations.
+• - upgrade_proxy/src/storage.rs
+•   UpgradeProxy-prefixed storage keys (Admin, DaoCouncil, Pending) that
+•   cannot collide with any future implementation contract's own keys.
+• - upgrade_proxy/src/error.rs
+•   Fixed-discriminant #[contracterror] enum covering all failure modes:
+•   AlreadyInitialized, NotInitialized, Unauthorized, UpgradeAlreadyPending,
+•   NoPendingUpgrade, TimelockNotElapsed, ArithmeticOverflow.
+• - upgrade_proxy/src/timelock.rs
+•   TIMELOCK_SECONDS = 604 800 (7 days). PendingUpgrade struct records
+•   wasm_hash, proposed_at, execute_after. assert_elapsed() enforces the
+•   gate using env.ledger().timestamp() (Unix seconds, robust to ledger
+•   velocity changes).
+• - upgrade_proxy/src/lib.rs
+•   UpgradeProxyContract with five public entry points:
+•   * initialize(admin, dao_council) — one-time setup.
+•   * propose_upgrade(new_wasm)      — admin uploads WASM, starts countdown.
+•   * abort_upgrade(caller)          — admin OR dao_council emergency cancel.
+•   * execute_upgrade()              — admin applies swap after 7-day window.
+•   * pending_upgrade() / admin() / dao_council() / timelock_remaining()
+•     — read-only queries for off-chain tooling and frontends.
+• All auth checks use require_auth(); at most one pending upgrade at a
+• time; storage cleared before deployer.update_current_contract_wasm() to
+• prevent re-entrancy edge-cases.
+• Closes #331
+• Create protocol-upgrades.md
+📝 docs: Optimize PVCs for Captive Core sync
+• - Add documentation analyzing stateless vs stateful pods for blockchain.
+• - Provide configurations for high IOPS StorageClasses.
+• - Delineate requirements for Horizon archival vs Active validators.
+• - Add manifest examples for high IOPS StorageClasses.
+🐛 fix: ## [Documentation] Disaster Recovery Failover & Snapshot Res (#130)
+✨ feat(contracts): implement multi-signature wallet factory on Soroban
+• - Add contracts/multisig-factory/Cargo.toml: standalone Soroban
+•   workspace using soroban-sdk =27.0.6, matching governance-vote
+•   convention.
+• - Add contracts/multisig-factory/src/lib.rs (MultisigFactory contract):
+•   * Admin-controlled WASM registration via register_wallet_wasm().
+•   * deploy_wallet() uses env.deployer().with_current_contract(salt)
+•     .deploy_v2() to instantiate independent wallet instances.
+•   * Salt-based idempotency guard (AlreadyDeployed) prevents overwriting.
+•   * Registry of deployed wallets queryable via get_wallet(salt).
+•   * wallet_count() tracks total deployments.
+•   * rotate_admin() for factory admin rotation.
+• - Add contracts/multisig-factory/src/wallet.rs (MultisigWallet contract):
+•   * Proposal queue with five kinds: Transfer, ContractCall,
+•     ThresholdChange, AddSigner, RemoveSigner.
+•   * propose_transfer / propose_contract_call / propose_threshold_change
+•     / propose_add_signer / propose_remove_signer entry points.
+•   * vote() enforces: signer-only, active proposal, no duplicate votes,
+•     expiry check. Transitions to Approved once normal threshold met.
+•   * execute() enforces: Approved state, expiry, and — for governance
+•     proposals — super-majority ⌈n×2/3⌉. Marks Executed on success,
+•     preventing replay.
+•   * cancel() restricted to original proposer; prevents execution of
+•     Cancelled proposals.
+•   * Expired proposals auto-detected on next vote/execute call.
+•   * super_majority_threshold(n) = (n*2 + 2) / 3 (integer ceiling).
+• - Add contracts/multisig-factory/src/test.rs (31 unit tests):
+•   * Factory: initialize, double-init guard, WASM registration, deploy
+•     multiple independent wallets, duplicate-salt guard, wallet_count.
+•   * Wallet: threshold-approved transfer, sub-threshold rejection,
+•     duplicate vote, non-signer vote, proposal expiry, proposer cancel,
+•     non-proposer cancel rejection, re-execution prevention.
+•   * Governance: threshold change requires super-majority (5-signer
+•     example), sub-super-majority rejection, AddSigner, RemoveSigner.
+•   * Security boundaries: Wallet A signer cannot vote on Wallet B
+•     proposals; Wallet B signer cannot propose on Wallet A.
+•   * Formula correctness: n=3→2, n=5→4, n=7→5 super-majority.
+•   * Invalid amount (≤0) and invalid threshold (0, >n) on deploy.
+• Closes #215
+
+
 ## Chart v2.17.0 (2026-10-01) [minor]
 
 • Merge pull request #373 from Seeyerh/security/issue-327-enhancement-gitops-driven-immutable-secret
