@@ -107,6 +107,7 @@ nav:
     - Operators: configuration/operators.md
     - Storage: configuration/storage.md
     - Database Optimization: database/optimization-guide.md
+    - Soroban Cost Optimization: infrastructure/cost-optimization.md
   - Tutorials:
     - tutorials/index.md
     - Deploy Testnet Validator: tutorials/deploy-testnet-validator.md
