@@ -141,6 +141,7 @@ nav:
     - Security Compliance Guide: security/compliance-guide.md
     - Container Image Security: container-image-security.md
     - Credentials & Secrets: security/credentials-and-secrets.md
+    - Key Sharding & Seed Custody: security/key-sharding.md
     - Pod Security Standards: security/pss.md
     - Automated Dependency Updates: security/dependency-updates.md
     - RPC Rate Limiting & DoS Mitigation: security/rpc-dos-mitigation.md
