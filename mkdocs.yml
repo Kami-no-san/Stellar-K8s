@@ -141,6 +141,7 @@ nav:
     - Credentials & Secrets: security/credentials-and-secrets.md
     - Pod Security Standards: security/pss.md
     - Automated Dependency Updates: security/dependency-updates.md
+    - RPC Rate Limiting & DoS Mitigation: security/rpc-dos-mitigation.md
   - Networking:
     - Comprehensive Network Guide: networking/index.md
   - Development:
